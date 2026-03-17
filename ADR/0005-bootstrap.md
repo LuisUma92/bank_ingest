@@ -1,142 +1,146 @@
-# ADR-0005: Bootstrap y estrategia de Dependency Injection
+# ADR-0005: Bootstrap and Dependency Injection Strategy
 
-**Estado:** Aceptado
-**Fecha:** 2026-03-16
-**Autor:** Proyecto `bank_ingest`
-
----
-
-## Contexto
-
-El sistema `bank_ingest` utiliza una arquitectura hexagonal en la que el dominio y la capa application definen puertos, y los adaptadores concretos implementan esos contratos para tecnologías como Gmail API, SQLAlchemy y filesystem. La orquestación del flujo principal ocurre en application, mientras que la infraestructura debe permanecer fuera del dominio.
-
-En la versión inicial del sistema existen aproximadamente 15 componentes que deben conectarse entre sí, incluyendo:
-
-- adaptadores de fuente de mensajes
-- adaptadores de persistencia
-- adaptadores de almacenamiento de artefactos
-- adaptadores de actualización de estado en Gmail
-- registries o resolvedores de parsers
-- casos de uso de application
-
-Se requiere definir una estrategia de **bootstrap** y **dependency injection** para cablear estas dependencias de forma consistente con la arquitectura adoptada.
-
-Las alternativas consideradas son:
-
-1. **Constructor injection manual** mediante un `create_app()` que instancia y conecta todos los componentes.
-2. **Lightweight DI container** usando una librería como `dependency-injector`.
-3. **Registry pattern global** con registro de dependencias en diccionarios o singletons compartidos.
-
-Dado que el proyecto tiene también un objetivo pedagógico explícito —practicar arquitectura usada en entornos industriales— la decisión debe privilegiar claridad, trazabilidad y disciplina arquitectónica.
+**Status:** Accepted
+**Date:** 2026-03-16
+**Author:** `bank_ingest` Project
 
 ---
 
-## Decisión
+## Context
 
-El sistema utilizará **constructor injection manual** en un único **composition root** ubicado en:
+The `bank_ingest` system follows a **hexagonal architecture**, where the domain and application layers define ports, and concrete adapters implement those contracts for external technologies such as the Gmail API, SQLAlchemy, and filesystem storage.
 
-```
+The orchestration of the main processing pipeline occurs in the **application layer**, while infrastructure concerns remain outside the domain.
 
+In the initial version of the system, approximately **15 components** must be wired together, including:
+
+- message source adapters
+- persistence adapters
+- artifact storage adapters
+- message processing state adapters
+- parser registries or resolvers
+- application use cases
+
+The system therefore requires a clear strategy for **bootstrapping and dependency injection** that remains consistent with the architectural principles of the project.
+
+Three alternatives were considered:
+
+1. **Manual constructor injection** using a `create_app()` function that instantiates and wires all components.
+2. A **lightweight DI container**, using a library such as `dependency-injector`.
+3. A **global registry pattern**, using dictionaries or shared singletons to resolve dependencies.
+
+Because the project also has a pedagogical objective—learning architecture practices commonly used in industrial software systems—the chosen approach should prioritize **clarity, traceability, and architectural discipline**.
+
+---
+
+## Decision
+
+The system will use **manual constructor injection** within a single **composition root**, located at:
+
+```id="zpq42q"
 src/bank_ingest/bootstrap.py
-
 ```
 
-Este módulo expondrá una función del tipo:
+This module will expose a function similar to:
 
-```python
+```python id="k0io66"
 create_app()
 ```
 
-responsable de:
+This function is responsible for:
 
-1. cargar configuración
-2. construir clientes técnicos
-3. instanciar adaptadores concretos
-4. instanciar servicios y casos de uso
-5. conectar dependencias entre puertos y adaptadores
-6. devolver un contenedor liviano de servicios de aplicación o la composición final requerida por el entrypoint
+1. loading configuration
+2. constructing technical clients
+3. instantiating concrete adapters
+4. instantiating services and use cases
+5. wiring dependencies between ports and adapters
+6. returning the application container or the final composition required by the entrypoint
 
-No se utilizará, por ahora, un DI container externo.
+At this stage:
 
-Tampoco se permitirá el uso de registros globales de dependencias, service locators implícitos ni singletons accesibles por import.
-
----
-
-## Justificación
-
-### 1. Máxima claridad del grafo de dependencias
-
-En un sistema pequeño o mediano, el cableado manual permite ver de forma explícita qué depende de qué.
-
-Esto es especialmente valioso en una arquitectura hexagonal, donde una de las disciplinas más importantes es mantener la dirección correcta de las dependencias: hacia el dominio y nunca desde el dominio hacia la infraestructura.
-
-Un `bootstrap.py` explícito actúa como punto único de ensamblaje y hace visible:
-
-- qué puertos existen
-- qué adaptadores los satisfacen
-- qué casos de uso dependen de cuáles puertos
-- qué componentes técnicos son compartidos
+- **no external DI container will be used**
+- **no global dependency registries or service locators are allowed**
+- **no hidden singletons accessible via imports**
 
 ---
 
-### 2. Mejor alineación con el objetivo pedagógico del proyecto
+## Rationale
 
-El proyecto acepta conscientemente una arquitectura formal, incluso si para una v1 podría parecer más pesada de lo estrictamente necesario, porque uno de sus objetivos es aprender prácticas de software más cercanas a entornos industriales.
+### Explicit visibility of the dependency graph
 
-El wiring manual obliga a comprender el sistema de forma explícita:
+In small to medium systems, manual wiring makes the dependency graph **fully explicit**.
 
-- dónde termina application
-- dónde empieza infrastructure
-- qué dependencia pertenece a cada capa
-- qué contrato satisface cada adaptador
+This is particularly valuable in hexagonal architectures, where maintaining the correct dependency direction is essential:
 
-Un DI container ocultaría parte de esa comprensión detrás de providers, wiring declarativo o mecanismos de resolución automática.
+dependencies must point **toward the domain**, never outward from it.
 
----
+An explicit `bootstrap.py` provides a single place where it is possible to see:
 
-### 3. Menor complejidad accidental en la versión inicial
-
-Con aproximadamente 15 componentes a cablear, introducir un contenedor de DI agregaría otra capa conceptual sin aportar todavía un beneficio proporcional.
-
-En esta etapa, el problema principal no es administrar un grafo de dependencias demasiado grande, sino mantener el sistema entendible y correctamente separado.
-
-El constructor injection manual resuelve ese problema con menor complejidad operacional.
+- which ports exist
+- which adapters implement them
+- which use cases depend on which ports
+- which technical components are shared
 
 ---
 
-### 4. Mejor testabilidad sin magia
+### Alignment with the pedagogical goals of the project
 
-Cuando las dependencias se inyectan por constructor y el composition root está aislado en `bootstrap.py`, los tests pueden instanciar casos de uso directamente con fakes, stubs o adaptadores de prueba.
+The project intentionally adopts a formal architecture—even if heavier than strictly necessary for a v1—because one of its goals is to practice **software architecture patterns used in production systems**.
 
-Esto evita:
+Manual wiring forces the developer to understand the system explicitly:
 
-- estado global compartido
-- dependencia en un contenedor activo
-- resolución implícita en tiempo de ejecución
-- dificultad para aislar pruebas unitarias
+- where the application layer ends
+- where infrastructure begins
+- which dependency belongs to which layer
+- which adapter satisfies each port
+
+A DI container would obscure part of this understanding behind providers or automatic resolution.
 
 ---
 
-### 5. Evita service locator disfrazado
+### Reduced accidental complexity in the initial version
 
-El patrón de registro global fue descartado porque tiende a introducir estado global implícito y hace menos evidente el origen real de las dependencias.
+With approximately **15 components** to wire, introducing a DI container would add an additional conceptual layer without delivering proportional benefits.
 
-Eso debilita la disciplina arquitectónica del proyecto y dificulta:
+At this stage, the main challenge is **maintaining architectural clarity**, not managing a complex dependency graph.
 
-- razonamiento sobre el sistema
+Manual constructor injection solves this problem with minimal additional complexity.
+
+---
+
+### Improved testability without hidden mechanisms
+
+When dependencies are injected through constructors and the composition root is isolated in `bootstrap.py`, tests can instantiate use cases directly with **fakes, stubs, or test adapters**.
+
+This avoids problems such as:
+
+- shared global state
+- hidden container dependencies
+- implicit runtime resolution
+- difficulty isolating unit tests
+
+---
+
+### Avoiding a disguised service locator
+
+The global registry approach was rejected because it introduces **implicit global state** and hides the origin of dependencies.
+
+This weakens architectural discipline and complicates:
+
+- reasoning about the system
 - debugging
 - testing
-- refactors seguros
+- safe refactoring
 
 ---
 
-## Forma de implementación
+## Implementation Approach
 
-El composition root debe mantenerse concentrado en un único módulo.
+The composition root should remain concentrated in a single module.
 
-Ejemplo conceptual:
+Conceptual example:
 
-```python
+```python id="5fg3q1"
 def create_app(settings: Settings) -> AppContainer:
     gmail_client = GmailClient(...)
     message_source = GmailMessageSourceAdapter(gmail_client)
@@ -168,116 +172,120 @@ def create_app(settings: Settings) -> AppContainer:
     )
 ```
 
-Este ejemplo es ilustrativo. La estructura exacta podrá ajustarse con el crecimiento del proyecto.
+The exact structure may evolve as the project grows.
 
 ---
 
-## Criterio para futura migración a un DI container
+## Criteria for Migrating to a DI Container
 
-La decisión actual **no prohíbe** el uso futuro de un DI container.
+The current decision **does not prohibit** the future adoption of a dependency injection container.
 
-Se adopta constructor injection manual como estrategia inicial y se define el siguiente criterio de revisión:
+Manual constructor injection is adopted as the **initial strategy**, and the following review criteria are defined.
 
-Se reconsiderará migrar a un DI container cuando se cumplan **dos o más** de las siguientes condiciones:
+Migration to a DI container should be reconsidered if **two or more** of the following conditions occur:
 
-1. Existan **múltiples entrypoints** con wiring distinto
-   Ejemplo: CLI, scheduler, worker de reprocesamiento, API HTTP, scripts de backfill.
+1. Multiple entrypoints require different wiring configurations
+   (e.g., CLI, scheduler, worker processes, HTTP API, backfill scripts).
 
-2. Exista **duplicación relevante del wiring** entre entrypoints o módulos de arranque.
+2. Significant wiring duplication appears across entrypoints.
 
-3. La configuración por entorno se vuelva **significativamente condicional**
-   Ejemplo: adaptadores distintos en dev, test, prod o perfiles con servicios opcionales.
+3. Environment configuration becomes highly conditional
+   (e.g., different adapters for dev, test, and production environments).
 
-4. Sea necesario administrar de forma explícita el **lifecycle** de recursos compartidos
-   Ejemplo: startup/shutdown coordinado, pools, sesiones, clients complejos.
+4. Explicit lifecycle management becomes necessary
+   (e.g., startup/shutdown coordination, connection pools, long-lived clients).
 
-5. El armado manual en tests se vuelva demasiado verboso o repetitivo.
+5. Test setup becomes overly verbose due to manual wiring.
 
-6. El `bootstrap.py` deje de ser fácil de leer y mantener
-   Como señal orientativa, esto puede ocurrir alrededor de **25–30 componentes cableados**, aunque no constituye un umbral rígido.
+6. `bootstrap.py` becomes difficult to read or maintain.
 
-Mientras estas condiciones no se cumplan, la claridad del wiring manual se considera superior al beneficio de introducir un contenedor externo.
+As a rough guideline, this may occur when the system grows to **25–30 wired components**, although this is not a strict threshold.
 
----
-
-## Consecuencias
-
-### Beneficios
-
-- wiring explícito y fácil de inspeccionar
-- alineación con arquitectura hexagonal
-- menor complejidad accidental en v1
-- alto valor pedagógico
-- alta testabilidad
-- ausencia de magia o resolución implícita
+Until then, the clarity of manual wiring is considered preferable.
 
 ---
 
-### Costos
+## Consequences
 
-- mayor verbosidad en `bootstrap.py`
-- necesidad de actualizar manualmente el composition root al agregar dependencias
-- posible crecimiento del archivo de arranque con el tiempo
+### Benefits
 
-Estos costos se consideran aceptables en la etapa actual del proyecto.
-
----
-
-## Alternativas consideradas
-
-### 1. Lightweight DI container
-
-Se consideró utilizar una librería de dependency injection.
-
-**Ventajas:**
-
-- reduce wiring repetitivo
-- facilita escenarios con múltiples entrypoints
-- mejora manejo de providers y lifecycle cuando el sistema crece
-
-**Desventajas:**
-
-- agrega complejidad conceptual innecesaria en la etapa actual
-- oculta parte del grafo de dependencias
-- reduce parte del valor pedagógico del wiring explícito
-- puede incentivar uso prematuro de abstracciones de framework
-
-Se decide **posponer** esta opción para una etapa futura en la que el costo del wiring manual deje de ser razonable.
+- explicit and inspectable wiring
+- strong alignment with hexagonal architecture
+- minimal accidental complexity in v1
+- high pedagogical value
+- strong testability
+- no hidden dependency resolution
 
 ---
 
-### 2. Registry pattern global
+### Costs
 
-Se consideró registrar dependencias en estructuras globales accesibles desde distintos módulos.
+- increased verbosity in `bootstrap.py`
+- manual updates required when adding new dependencies
+- potential growth of the bootstrap module over time
 
-**Ventajas:**
-
-- implementación rápida
-- poco código inicial
-
-**Desventajas:**
-
-- introduce estado global implícito
-- dificulta testing
-- reduce claridad arquitectónica
-- favorece acoplamiento oculto
-- se aproxima a un service locator, lo cual contradice el objetivo de dependencias explícitas
-
-Esta alternativa fue descartada.
+These costs are acceptable at the current stage of the project.
 
 ---
 
-## Referencias
+## Alternatives Considered
 
-- Alistair Cockburn — _Hexagonal Architecture (Ports and Adapters)_
-- Robert C. Martin — _Clean Architecture_
-- Martin Fowler — _Inversion of Control Containers and the Dependency Injection Pattern_
-- Eric Evans — _Domain-Driven Design_
+### Lightweight DI container
+
+Using a dependency injection library was considered.
+
+**Advantages**
+
+- reduces repetitive wiring
+- simplifies systems with multiple entrypoints
+- supports lifecycle management
+
+**Disadvantages**
+
+- introduces unnecessary conceptual complexity at this stage
+- hides parts of the dependency graph
+- reduces the educational value of explicit wiring
+- encourages premature framework abstractions
+
+For these reasons, this option was **postponed**.
 
 ---
 
-## Estado
+### Global registry pattern
 
-Esta decisión queda **aceptada** para la versión inicial del sistema.
+Another alternative was registering dependencies in global structures accessible from multiple modules.
 
-La migración a un DI container queda explícitamente diferida y deberá registrarse mediante un nuevo ADR si en el futuro se cumplen los criterios definidos en este documento.
+**Advantages**
+
+- quick implementation
+- minimal initial code
+
+**Disadvantages**
+
+- introduces implicit global state
+- complicates testing
+- weakens architectural clarity
+- promotes hidden coupling
+- effectively becomes a service locator
+
+This option was therefore rejected.
+
+---
+
+## References
+
+Alistair Cockburn — _Hexagonal Architecture (Ports and Adapters)_
+
+Robert C. Martin — _Clean Architecture_
+
+Martin Fowler — _Inversion of Control Containers and the Dependency Injection Pattern_
+
+Eric Evans — _Domain-Driven Design_
+
+---
+
+## Status
+
+This decision is **accepted** for the initial version of the system.
+
+Migration to a DI container remains intentionally deferred and should be documented through a new ADR if the defined criteria are met.

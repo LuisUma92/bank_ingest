@@ -1,46 +1,47 @@
-# ADR-0003: Política de almacenamiento local (`data/`)
+# ADR-0003: Local Storage Policy (`data/`)
 
-**Estado:** Aceptado
-**Fecha:** 2026-03-16
-**Autor:** Proyecto `bank_ingest`
-
----
-
-## Contexto
-
-El sistema `bank_ingest` procesa correos electrónicos que contienen notificaciones financieras enviadas por bancos.
-Durante el desarrollo y la operación del sistema es necesario poder:
-
-- depurar errores de parsing
-- auditar eventos financieros extraídos
-- reprocesar mensajes si cambian los parsers
-- investigar cambios en el formato de correos enviados por los bancos
-
-Una estrategia común en sistemas de ingestión de datos es almacenar **artefactos intermedios del pipeline** para facilitar observabilidad y reproducibilidad.
-
-Sin embargo, el almacenamiento indiscriminado de estos artefactos también presenta desventajas:
-
-- mayor consumo de disco
-- exposición potencial de datos financieros sensibles
-- complejidad operativa innecesaria en producción
-
-Por esta razón se requiere una política explícita para el almacenamiento de artefactos generados durante el procesamiento.
+**Status:** Accepted
+**Date:** 2026-03-16
+**Author:** `bank_ingest` Project
 
 ---
 
-## Decisión
+## Context
 
-El sistema mantendrá un directorio estructurado llamado:
+The `bank_ingest` system processes email notifications sent by banks that contain financial transaction information.
 
-```id="p4t0yh"
+During both development and operation, it must be possible to:
+
+- debug parsing failures
+- audit extracted financial events
+- reprocess messages if parsers change
+- investigate changes in email formats sent by banks
+
+A common strategy in data ingestion systems is to store **intermediate pipeline artifacts** to improve observability and reproducibility.
+
+However, indiscriminately storing these artifacts also introduces potential drawbacks:
+
+- increased disk usage
+- potential exposure of sensitive financial data
+- unnecessary operational complexity in production
+
+For this reason, the system requires an explicit **artifact storage policy** governing what data is stored during processing.
+
+---
+
+## Decision
+
+The system will maintain a structured directory named:
+
+```
 data/
 ```
 
-Este directorio almacenará artefactos operativos generados durante el pipeline de ingestión.
+This directory stores operational artifacts generated during the ingestion pipeline.
 
-La estructura definida es:
+The defined structure is:
 
-```id="p7ow7l"
+```
 data/
 ├── db/
 ├── raw_messages/
@@ -49,34 +50,34 @@ data/
 └── errors/
 ```
 
-Cada subdirectorio representa una etapa distinta del pipeline de procesamiento.
+Each subdirectory corresponds to a specific stage of the processing pipeline.
 
-La persistencia de cada tipo de artefacto será **configurable mediante banderas de configuración**.
+The persistence of each artifact type will be **configurable through runtime configuration flags**.
 
 ---
 
-## Descripción de cada directorio
+## Directory Description
 
 ### `data/db`
 
-Contiene la base de datos local utilizada por el sistema.
+Stores the local database used by the system.
 
-Inicialmente se utilizará:
+The initial implementation uses:
 
-```id="6q6m4n"
+```
 SQLite
 ```
 
-Motivaciones:
+Motivations:
 
-- simplicidad de despliegue
-- base autocontenida
-- facilidad de respaldo
-- volumen de datos esperado bajo
+- simple deployment
+- self-contained database
+- easy backups
+- low expected data volume
 
-El archivo principal será algo similar a:
+The main database file will resemble:
 
-```id="ptum61"
+```
 data/db/bank_ingest.sqlite
 ```
 
@@ -84,54 +85,54 @@ data/db/bank_ingest.sqlite
 
 ### `data/raw_messages`
 
-Contiene copias del mensaje original descargado desde Gmail.
+Stores copies of the original messages retrieved from Gmail.
 
-Formato típico:
+Typical formats include:
 
-```id="c7jvch"
+```
 .eml
 .json
 ```
 
-Contenido posible:
+These artifacts may contain:
 
-- headers completos
-- cuerpo HTML
-- cuerpo en texto plano
-- metadata de Gmail
-- identificadores del mensaje
+- full message headers
+- HTML body
+- plain text body
+- Gmail metadata
+- message identifiers
 
-Este artefacto permite:
+This storage enables:
 
-- reprocesar mensajes si cambian los parsers
-- analizar cambios en el formato de los correos
-- auditar el origen de un evento financiero
+- reprocessing messages if parsers evolve
+- analyzing changes in email formats
+- auditing the origin of financial events
 
 ---
 
 ### `data/rendered`
 
-Contiene representaciones intermedias del mensaje preparadas para el parser.
+Stores intermediate representations of the message prepared for parsing.
 
-Ejemplos:
+Examples include:
 
-- texto limpio extraído del HTML
-- versión normalizada del contenido
-- estructura simplificada de campos relevantes
+- cleaned text extracted from HTML
+- normalized message content
+- simplified structures of relevant fields
 
-Este paso intermedio facilita:
+This intermediate stage helps:
 
-- depuración del parser
-- aislamiento de errores en extracción de texto
-- desarrollo incremental de parsers
+- debug parsing logic
+- isolate text extraction issues
+- support incremental parser development
 
 ---
 
 ### `data/parsed`
 
-Contiene el resultado estructurado del proceso de parsing antes o después de persistirlo en la base de datos.
+Stores the structured output produced by the parser, either before or after persistence in the database.
 
-Ejemplo:
+Example:
 
 ```json
 {
@@ -146,88 +147,88 @@ Ejemplo:
 }
 ```
 
-Estos artefactos permiten:
+These artifacts allow developers to:
 
-- inspeccionar rápidamente resultados de parsing
-- validar parsers durante desarrollo
-- reproducir errores reportados
+- quickly inspect parsing results
+- validate parser behavior during development
+- reproduce reported errors
 
 ---
 
 ### `data/errors`
 
-Contiene información sobre mensajes que no pudieron procesarse correctamente.
+Stores diagnostic information about messages that could not be processed successfully.
 
-Cada error debe incluir:
+Each error artifact should include:
 
-- identificador del mensaje
-- motivo del error
-- fragmentos relevantes del contenido
-- contexto necesario para depuración
+- the message identifier
+- the error reason
+- relevant excerpts from the message
+- debugging context
 
-Ejemplo:
+Example:
 
 ```json
 {
   "message_id": "...",
   "error": "missing_authorization_code",
   "parser": "bac.transaction_notification",
-  "excerpt": "...texto relevante..."
+  "excerpt": "...relevant text..."
 }
 ```
 
-Estos artefactos permiten diagnosticar problemas de parsing o cambios en el formato de los correos.
+These artifacts facilitate diagnosing parsing issues or identifying format changes in bank notifications.
 
 ---
 
-## Organización interna
+## Internal Organization
 
-Dentro de cada directorio se recomienda organizar archivos por fecha para facilitar inspección y rotación.
+Within each directory, files should be organized by date to simplify inspection and retention management.
 
-Ejemplo:
+Example:
 
-```id="5q17dz"
+```
 raw_messages/
 └── 2026/
     └── 03/
         └── 16/
 ```
 
-Esto permite:
+Benefits include:
 
-- identificar fácilmente cuándo se procesó un mensaje
-- eliminar datos antiguos sin inspeccionar cada archivo
-- facilitar auditorías temporales
+- easier identification of processing dates
+- simplified deletion of old data
+- improved support for temporal audits
 
 ---
 
-## Política de configuración
+## Configuration Policy
 
-La persistencia de artefactos será controlada mediante banderas configurables.
+Artifact persistence is controlled through configuration flags.
 
-Ejemplos:
+Examples:
 
-```id="ufsqw2"
+```
 STORE_RAW_MESSAGES=true
 STORE_RENDERED_MESSAGES=true
 STORE_PARSED_OUTPUT=true
 STORE_ERROR_ARTIFACTS=true
 ```
 
-Estas banderas permiten ajustar el comportamiento del sistema según el entorno:
+These flags allow the system to adapt behavior depending on the environment.
 
-### Desarrollo
+### Development environment
 
-```id="v4mk09"
+```
 STORE_RAW_MESSAGES=true
 STORE_RENDERED_MESSAGES=true
 STORE_PARSED_OUTPUT=true
 STORE_ERROR_ARTIFACTS=true
 ```
 
-### Producción mínima
+### Minimal production environment
 
-```id="8nq0yr"
+```
 STORE_RAW_MESSAGES=true
 STORE_RENDERED_MESSAGES=false
 STORE_PARSED_OUTPUT=false
@@ -236,97 +237,97 @@ STORE_ERROR_ARTIFACTS=true
 
 ---
 
-## Seguridad
+## Security Considerations
 
-Los datos almacenados en `data/` pueden contener información financiera sensible.
+The `data/` directory may contain sensitive financial information.
 
-Por esta razón se establecen las siguientes prácticas:
+For this reason, the following practices are required:
 
-- el directorio `data/` **no se versiona en git**
-- el acceso al directorio debe restringirse a usuarios autorizados
-- se recomienda usar permisos restrictivos en el sistema de archivos
-- los backups deben protegerse adecuadamente
-
----
-
-## Retención de datos
-
-La política inicial de retención será conservadora para facilitar desarrollo y depuración.
-
-Sugerencias iniciales:
-
-| artefacto    | retención sugerida |
-| ------------ | ------------------ |
-| raw_messages | 90 días            |
-| rendered     | 30 días            |
-| parsed       | 30 días            |
-| errors       | 180 días           |
-
-La implementación de rotación automática se definirá en ADR posteriores.
+- the `data/` directory **must not be committed to version control**
+- filesystem access should be restricted to authorized users
+- restrictive filesystem permissions should be enforced
+- backups must be properly protected
 
 ---
 
-## Relación con arquitectura hexagonal
+## Data Retention
 
-El almacenamiento en `data/` se implementa mediante **adaptadores de almacenamiento** ubicados en:
+The initial retention policy is conservative to facilitate development and debugging.
 
-```id="fwv9d6"
+Suggested defaults:
+
+| Artifact     | Suggested retention |
+| ------------ | ------------------- |
+| raw_messages | 90 days             |
+| rendered     | 30 days             |
+| parsed       | 30 days             |
+| errors       | 180 days            |
+
+Automated rotation and cleanup policies may be defined in future ADRs.
+
+---
+
+## Relationship to the Hexagonal Architecture
+
+Storage in `data/` is implemented through **storage adapters** located in:
+
+```
 src/bank_ingest/adapters/outbound/storage
 ```
 
-Estos adaptadores implementan puertos definidos en el dominio.
+These adapters implement ports defined in the domain layer.
 
-Esto permite que el dominio no dependa directamente del filesystem.
-
----
-
-## Consecuencias
-
-### Beneficios
-
-- mejor depuración de parsers
-- trazabilidad de eventos financieros
-- posibilidad de reprocesar mensajes
-- observabilidad del pipeline
-- soporte para auditorías
+This ensures that the domain remains independent from filesystem details.
 
 ---
 
-### Costos
+## Consequences
 
-- mayor uso de disco
-- necesidad de gestionar retención
-- exposición potencial de datos sensibles si no se protege el sistema
+### Benefits
 
-Estos costos se consideran aceptables debido a los beneficios para desarrollo y operación.
-
----
-
-## Alternativas consideradas
-
-### No almacenar artefactos
-
-Una alternativa sería no almacenar ningún artefacto intermedio y depender exclusivamente de la base de datos.
-
-Esta opción fue descartada porque:
-
-- dificulta depurar parsers
-- impide reprocesar mensajes
-- reduce observabilidad del pipeline
-- complica auditorías
+- improved parser debugging
+- traceability of financial events
+- ability to reprocess messages
+- improved pipeline observability
+- support for auditing
 
 ---
 
-## Referencias
+### Costs
 
-Martin Fowler — Feature Toggles
-<https://martinfowler.com/articles/feature-toggles.html>
+- increased disk usage
+- need for retention management
+- potential exposure of sensitive data if not properly secured
 
-Alistair Cockburn — Hexagonal Architecture
-<https://alistair.cockburn.us/hexagonal-architecture>
+These costs are considered acceptable given the benefits for development and system observability.
 
 ---
 
-## Estado
+## Alternatives Considered
 
-Esta política queda **aceptada** para la versión inicial del sistema.
+### No artifact storage
+
+One alternative would be to store no intermediate artifacts and rely exclusively on the database.
+
+This option was rejected because it would:
+
+- make parser debugging significantly harder
+- prevent message reprocessing
+- reduce pipeline observability
+- complicate auditing
+
+---
+
+## References
+
+Martin Fowler — _Feature Toggles_
+[https://martinfowler.com/articles/feature-toggles.html](https://martinfowler.com/articles/feature-toggles.html)
+
+Alistair Cockburn — _Hexagonal Architecture_
+[https://alistair.cockburn.us/hexagonal-architecture](https://alistair.cockburn.us/hexagonal-architecture)
+
+---
+
+## Status
+
+This storage policy is **accepted** for the initial version of the system.

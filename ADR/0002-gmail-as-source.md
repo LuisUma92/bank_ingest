@@ -1,174 +1,176 @@
-# ADR-0002: Gmail como fuente de ingestión de mensajes
+# ADR-0002: Gmail as the Message Ingestion Source
 
-**Estado:** Aceptado
-**Fecha:** 2026-03-16
-**Autor:** Proyecto `bank_ingest`
+**Status:** Accepted
+**Date:** 2026-03-16
+**Author:** `bank_ingest` Project
 
 ---
 
-## Contexto
+## Context
 
-El sistema `bank_ingest` necesita una fuente confiable desde la cual obtener notificaciones bancarias que llegan por correo electrónico. Actualmente estas notificaciones llegan a una cuenta de **Gmail** y el usuario ya utiliza reglas y etiquetas para organizarlas manualmente.
+The `bank_ingest` system requires a reliable source from which to retrieve bank notification emails. Currently, these notifications are delivered to a **Gmail** account, and the user already organizes them using Gmail filters and labels.
 
-El flujo manual actual es:
+The current manual workflow is:
 
-1. Los bancos envían correos de notificación de transacciones.
-2. Gmail aplica filtros automáticos.
-3. Los mensajes relevantes se etiquetan con **"Transacciones"**.
-4. El usuario revisa manualmente estos correos y extrae la información.
+1. Banks send transaction notification emails.
+2. Gmail automatically applies filters.
+3. Relevant messages receive the label **`Transacciones`**.
+4. The user manually reviews these messages and extracts the relevant information.
 
-El sistema debe automatizar la ingestión de estos mensajes para poder:
+The system should automate the ingestion of these messages in order to:
 
-- identificar notificaciones relevantes
-- extraer información financiera
-- registrar los eventos en una base de datos
-- mantener trazabilidad del procesamiento
+- identify relevant banking notifications
+- extract structured financial information
+- record financial events in a database
+- maintain traceability of message processing
 
-Existen dos alternativas principales para obtener los mensajes desde Gmail:
+Two main alternatives were considered for retrieving messages from Gmail:
 
 1. **IMAP**
 2. **Gmail API**
 
 ---
 
-## Decisión
+## Decision
 
-El sistema utilizará **Gmail API** como mecanismo oficial para obtener mensajes.
+The system will use the **Gmail API** as the official mechanism for retrieving messages.
 
-Los mensajes a procesar serán aquellos que posean la etiqueta:
+Only messages that have the label:
 
 ```
 Transacciones
 ```
 
-El sistema actualizará el estado del mensaje mediante etiquetas adicionales según el resultado del procesamiento.
+will be processed.
 
-| Resultado | Acción                    |
-| --------- | ------------------------- |
-| éxito     | agregar etiqueta `parsed` |
-| error     | agregar etiqueta `error`  |
+The system will update the processing state of each message using additional labels depending on the outcome of processing.
 
-Los mensajes que generen error permanecerán **no leídos** para facilitar su revisión manual desde la interfaz de Gmail.
+| Result  | Action             |
+| ------- | ------------------ |
+| success | add label `parsed` |
+| error   | add label `error`  |
 
----
-
-## Justificación
-
-### 1. Integración directa con el modelo de etiquetas de Gmail
-
-Gmail no utiliza carpetas tradicionales como otros servidores IMAP. Utiliza un sistema de **labels** donde un mismo mensaje puede tener múltiples etiquetas.
-
-La Gmail API permite trabajar directamente con este modelo:
-
-- consultar mensajes por etiqueta
-- agregar o eliminar etiquetas
-- actualizar estado de lectura
-- recuperar metadatos y contenido completo
-
-IMAP expone las etiquetas como si fueran carpetas, lo cual introduce ambigüedades y duplicaciones.
+Messages that result in an error will remain **unread**, making them easier to identify and review manually in the Gmail interface.
 
 ---
 
-### 2. Mejor control de estado del procesamiento
+## Rationale
 
-El sistema utiliza etiquetas para representar el estado del procesamiento.
+### Native integration with Gmail’s labeling model
 
-Estados definidos:
+Unlike traditional email systems that rely on folders, Gmail uses a **label-based model**, where a single message can have multiple labels simultaneously.
 
-| Estado    | Representación  |
+The Gmail API allows the system to interact directly with this model by enabling:
+
+- querying messages by label
+- adding or removing labels
+- updating read/unread status
+- retrieving message metadata and full content
+
+IMAP exposes Gmail labels as folders, which introduces ambiguity and can lead to duplicated messages.
+
+---
+
+### Clear and observable processing state
+
+The system uses labels to represent the processing status of each message.
+
+Defined states:
+
+| State     | Label           |
 | --------- | --------------- |
-| pendiente | `Transacciones` |
-| procesado | `parsed`        |
+| pending   | `Transacciones` |
+| processed | `parsed`        |
 | error     | `error`         |
 
-Esto permite observar el estado directamente desde Gmail sin depender del sistema.
+This approach allows the processing state to be observed directly in Gmail without relying on the internal database.
 
 ---
 
-### 3. Mayor robustez frente a duplicados
+### Reduced risk of duplicate processing
 
-Cada mensaje de Gmail posee un identificador único:
+Each Gmail message contains unique identifiers:
 
 ```
 message_id
 thread_id
 ```
 
-Estos identificadores permiten:
+These identifiers allow the system to:
 
-- evitar reprocesar mensajes
-- mantener trazabilidad
-- relacionar eventos con su origen
+- prevent duplicate processing
+- maintain traceability of message origins
+- associate financial events with their source message
 
-IMAP puede generar duplicados cuando un mensaje tiene múltiples etiquetas.
+IMAP may produce duplicates when a message has multiple labels.
 
 ---
 
-### 4. Seguridad mediante OAuth2
+### Secure authentication via OAuth2
 
-El acceso a Gmail se realiza mediante **OAuth2**, lo que implica que:
+Access to Gmail is implemented through **OAuth2**, which provides several security benefits:
 
-- el sistema no almacena contraseñas
-- el usuario autoriza el acceso explícitamente
-- los tokens pueden revocarse en cualquier momento
+- the system does not store user passwords
+- the user explicitly authorizes access
+- tokens can be revoked at any time
 
-Los archivos utilizados son:
+The system uses two credential files:
 
 ```
 credentials.json
 token.json
 ```
 
-Estos archivos contienen:
+These files contain:
 
-- client_id
-- client_secret
-- access_token
-- refresh_token
+- `client_id`
+- `client_secret`
+- `access_token`
+- `refresh_token`
 
-Nunca se almacenan contraseñas del usuario.
+User passwords are never stored.
 
 ---
 
-### 5. Compatibilidad con arquitectura hexagonal
+### Compatibility with the hexagonal architecture
 
-La Gmail API se implementa como un **adaptador outbound** que satisface el puerto:
+The Gmail integration is implemented as an **outbound adapter** that satisfies the port:
 
 ```
 MessageSourcePort
 ```
 
-Esto permite que el dominio y la aplicación no dependan directamente de Gmail.
+This ensures that the domain and application layers remain independent from Gmail.
 
-Si en el futuro se quisiera utilizar otra fuente de mensajes (por ejemplo IMAP, Exchange o archivos locales), bastaría con implementar otro adaptador.
+If a different message source were required in the future (for example IMAP, Exchange, or local files), it would only require implementing another adapter for the same port.
 
 ---
 
-## Modelo de ingestión
+## Ingestion Model
 
-El sistema realiza consultas periódicas a Gmail para obtener mensajes con la etiqueta:
+The system periodically queries Gmail for messages labeled:
 
 ```
 Transacciones
 ```
 
-La lógica de consulta excluye mensajes ya procesados.
+The query excludes messages that have already been processed.
 
-Consulta conceptual:
+Conceptual query:
 
 ```
 label:Transacciones -label:parsed
 ```
 
-El sistema recupera:
+For each message, the system retrieves:
 
-- metadata del mensaje
-- cuerpo en texto plano
-- cuerpo HTML
-- headers relevantes
+- message metadata
+- plain text body
+- HTML body
+- relevant headers
 - snippet
 
-Estos datos se transforman en una representación interna del dominio llamada:
+These elements are converted into an internal domain representation called:
 
 ```
 SourceMessage
@@ -176,47 +178,45 @@ SourceMessage
 
 ---
 
-## Flujo de procesamiento
+## Processing Flow
 
-El flujo de ingestión será el siguiente:
+The ingestion pipeline follows these steps:
 
-1. consultar Gmail por mensajes con etiqueta `Transacciones`
-2. excluir mensajes ya etiquetados como `parsed`
-3. descargar el contenido del mensaje
-4. convertir el mensaje en `SourceMessage`
-5. almacenar artefactos en `data/raw_messages`
-6. clasificar el mensaje
-7. ejecutar el parser correspondiente
-8. persistir evento financiero
-9. actualizar etiquetas en Gmail
+1. query Gmail for messages labeled `Transacciones`
+2. exclude messages already labeled `parsed`
+3. download message contents
+4. convert the message into a `SourceMessage`
+5. store artifacts in `data/raw_messages`
+6. classify the message
+7. run the corresponding parser
+8. persist the financial event
+9. update message labels in Gmail
 
-Resultado:
-
-### éxito
+### Success
 
 ```
 + parsed
 ```
 
-### error
+### Error
 
 ```
 + error
 ```
 
-Los mensajes con error se mantienen **no leídos**.
+Messages with errors remain **unread**.
 
 ---
 
-## Ubicación del adaptador Gmail
+## Gmail Adapter Location
 
-Dentro del proyecto el adaptador Gmail se ubica en:
+Within the project, the Gmail adapter is located at:
 
 ```
 src/bank_ingest/adapters/outbound/gmail
 ```
 
-Archivos principales:
+Key modules include:
 
 ```
 auth.py
@@ -225,36 +225,36 @@ mapper.py
 labels.py
 ```
 
-Responsabilidades:
+Responsibilities:
 
-| archivo   | responsabilidad                  |
-| --------- | -------------------------------- |
-| auth.py   | autenticación OAuth              |
-| client.py | comunicación con Gmail API       |
-| mapper.py | conversión Gmail → SourceMessage |
-| labels.py | operaciones sobre etiquetas      |
-
----
-
-## Observabilidad
-
-El estado del sistema puede observarse en dos niveles.
-
-### Gmail
-
-El usuario puede ver:
-
-- mensajes pendientes
-- mensajes procesados
-- mensajes con error
-
-directamente desde la interfaz de Gmail.
+| File        | Responsibility                           |
+| ----------- | ---------------------------------------- |
+| `auth.py`   | OAuth authentication                     |
+| `client.py` | communication with Gmail API             |
+| `mapper.py` | mapping Gmail messages → `SourceMessage` |
+| `labels.py` | operations related to labels             |
 
 ---
 
-### Sistema local
+## Observability
 
-El sistema mantiene artefactos de ingestión en:
+The system provides observability at two levels.
+
+### Gmail interface
+
+Users can directly observe:
+
+- pending messages
+- processed messages
+- messages with errors
+
+from the Gmail UI.
+
+---
+
+### Local system artifacts
+
+The system stores ingestion artifacts in:
 
 ```
 data/raw_messages
@@ -263,66 +263,66 @@ data/parsed
 data/errors
 ```
 
-Esto permite depurar el procesamiento si el formato del correo cambia.
+These artifacts allow developers to debug the system if the format of bank emails changes.
 
 ---
 
-## Consecuencias
+## Consequences
 
-### Beneficios
+### Benefits
 
-- integración natural con Gmail
-- estado visible desde el cliente de correo
-- control fino de etiquetas
-- menor riesgo de duplicados
-- seguridad basada en OAuth2
-- alineación con arquitectura hexagonal
-
----
-
-### Costos
-
-- dependencia de Gmail API
-- necesidad de configurar OAuth2
-- ligera complejidad adicional frente a IMAP simple
+- natural integration with Gmail
+- processing state visible from the email client
+- fine-grained control over labels
+- reduced risk of duplicates
+- OAuth2-based security
+- alignment with the hexagonal architecture
 
 ---
 
-## Alternativas consideradas
+### Costs
+
+- dependency on Gmail API
+- initial OAuth2 configuration required
+- slightly more complexity compared to simple IMAP access
+
+---
+
+## Alternatives Considered
 
 ### IMAP
 
-IMAP fue considerado como alternativa.
+IMAP was considered as an alternative.
 
-Ventajas:
+**Advantages**
 
-- protocolo estándar
-- compatible con múltiples proveedores
+- standard protocol
+- compatible with many providers
 
-Desventajas:
+**Disadvantages**
 
-- tratamiento ambiguo de etiquetas Gmail
-- duplicación de mensajes
-- menor control sobre metadata
-- dificultad para manipular etiquetas
+- ambiguous handling of Gmail labels
+- potential message duplication
+- limited metadata support
+- difficulty managing labels
 
-Por estas razones se decidió utilizar Gmail API.
+For these reasons, the Gmail API was selected.
 
 ---
 
-## Referencias
+## References
 
 Google Gmail API Documentation
-<https://developers.google.com/gmail/api>
+[https://developers.google.com/gmail/api](https://developers.google.com/gmail/api)
 
-Alistair Cockburn — Hexagonal Architecture
-<https://alistair.cockburn.us/hexagonal-architecture>
+Alistair Cockburn — _Hexagonal Architecture_
+[https://alistair.cockburn.us/hexagonal-architecture](https://alistair.cockburn.us/hexagonal-architecture)
 
 OAuth2 Authorization Framework
 RFC 6749
 
 ---
 
-## Estado
+## Status
 
-Esta decisión queda **aceptada** para la versión inicial del sistema.
+This decision is **accepted** for the initial version of the system.

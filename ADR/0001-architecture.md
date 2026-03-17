@@ -1,84 +1,86 @@
-# ADR-0001: Arquitectura del sistema `bank_ingest`
+# ADR-0001: System Architecture for `bank_ingest`
 
-**Estado:** Aceptado
-**Fecha:** 2026-03-16
-**Autor:** Proyecto `bank_ingest`
-
----
-
-## Contexto
-
-El proyecto `bank_ingest` tiene como objetivo automatizar la ingestión, clasificación y procesamiento de correos electrónicos de notificaciones bancarias para extraer eventos financieros estructurados que puedan ser analizados posteriormente.
-
-Actualmente el proceso se realiza manualmente. El sistema automatizado debe:
-
-1. Leer correos de Gmail etiquetados como **"Transacciones"**.
-2. Clasificar y parsear notificaciones bancarias.
-3. Extraer información estructurada sobre eventos financieros.
-4. Persistir los eventos en una base de datos local.
-5. Marcar los correos en Gmail según el resultado del procesamiento.
-
-Este proyecto también tiene un objetivo pedagógico explícito: **practicar arquitectura de software utilizada en entornos industriales**, específicamente arquitecturas orientadas a dominio y arquitecturas hexagonales.
-
-Por esta razón se ha decidido adoptar una arquitectura formal desde el inicio, aun cuando para una v1 funcional podría ser considerada sobreingeniería.
+**Status:** Accepted
+**Date:** 2026-03-16
+**Author:** `bank_ingest` Project
 
 ---
 
-## Decisión
+## Context
 
-El sistema se implementará utilizando una **arquitectura hexagonal (Ports and Adapters)** combinada con principios de **Domain-Driven Design (DDD)** y **Clean Architecture**.
+The `bank_ingest` project aims to automate the ingestion, classification, and processing of banking notification emails in order to extract structured financial events that can later be analyzed.
 
-Las decisiones arquitectónicas fundamentales son:
+Currently, this process is performed manually. The automated system must:
 
-### 1. Separación estricta entre dominio e infraestructura
+1. Read Gmail messages labeled **"Transacciones"**.
+2. Classify and parse bank notifications.
+3. Extract structured information about financial events.
+4. Persist the events in a local database.
+5. Update Gmail labels according to the processing result.
 
-El sistema se organiza en las siguientes capas:
+This project also has an explicit pedagogical objective: **to practice software architecture approaches used in industrial environments**, specifically domain-oriented and hexagonal architectures.
+
+For this reason, a formal architecture has been adopted from the beginning, even though for a minimal v1 it might be considered overengineering.
+
+---
+
+## Decision
+
+The system will be implemented using a **Hexagonal Architecture (Ports and Adapters)** combined with principles from **Domain-Driven Design (DDD)** and **Clean Architecture**.
+
+The main architectural decisions are the following.
+
+---
+
+## 1. Strict separation between domain and infrastructure
+
+The system is organized into the following layers:
 
 - **Domain**
 - **Application**
 - **Adapters**
 - **Shared**
 
-El dominio nunca debe depender de:
+The domain must never depend on:
 
 - Gmail API
 - SQLAlchemy
 - filesystem
 - CLI
 - Google Sheets
-- frameworks externos
+- external frameworks
 
-Las dependencias siempre deben apuntar **hacia el dominio**, nunca desde el dominio hacia afuera.
+Dependencies must always point **toward the domain**, never from the domain outward.
 
 ---
 
-### 2. Uso de puertos y adaptadores
+## 2. Use of ports and adapters
 
-El dominio y la aplicación definen **puertos** (interfaces abstractas).
+The domain and application layers define **ports** (abstract interfaces).
 
-Los adaptadores implementan esos puertos para tecnologías concretas.
+Adapters implement those ports for specific technologies.
 
-Ejemplos de puertos:
+Examples of ports:
 
 - `MessageSourcePort`
 - `EventRepositoryPort`
 - `MessageStorePort`
 - `ProcessingStatePort`
 
-Ejemplos de adaptadores:
+Examples of adapters:
 
 - Gmail API adapter
 - SQLAlchemy repository
 - Filesystem storage
 - Google Sheets exporter
 
-Este patrón permite cambiar infraestructura sin modificar el dominio.
+This pattern allows infrastructure to be replaced without modifying the domain.
 
 ---
 
-### 3. Organización del código
+## 3. Code organization
 
-La estructura del proyecto será:
+The project structure is:
 
 ```
 src/bank_ingest/
@@ -88,87 +90,87 @@ src/bank_ingest/
 └── shared
 ```
 
-#### Domain
+### Domain
 
-Define el modelo del problema.
+Defines the problem model.
 
-Contiene:
+Contains:
 
-- entidades
+- entities
 - value objects
 - enums
-- servicios de dominio
-- excepciones de dominio
-- puertos
+- domain services
+- domain exceptions
+- ports
 
-El dominio describe **qué es el sistema**, no **cómo funciona técnicamente**.
-
----
-
-#### Application
-
-Define los **casos de uso**.
-
-Orquesta el flujo de procesamiento:
-
-1. obtener mensajes
-2. clasificarlos
-3. parsearlos
-4. persistir eventos
-5. actualizar estado del mensaje
-
-La capa application depende del dominio y de los puertos definidos en él.
-
-No depende directamente de Gmail ni de SQL.
+The domain describes **what the system is**, not **how it technically works**.
 
 ---
 
-#### Adapters
+### Application
 
-Contiene implementaciones concretas de los puertos.
+Defines the **use cases**.
 
-Se divide en:
+It orchestrates the processing pipeline:
+
+1. retrieve messages
+2. classify them
+3. parse them
+4. persist events
+5. update message state
+
+The application layer depends on the domain and on the ports defined within it.
+
+It does not depend directly on Gmail or SQL.
+
+---
+
+### Adapters
+
+Contains concrete implementations of ports.
+
+It is divided into:
 
 **Inbound adapters**
 
 - CLI
-- tareas programadas
+- scheduled tasks
 
 **Outbound adapters**
 
 - Gmail API
-- Parsers específicos de bancos
-- Persistencia SQLAlchemy
-- Filesystem storage
-- Exportadores externos
+- bank-specific parsers
+- SQLAlchemy persistence
+- filesystem storage
+- external exporters
 
-Los adaptadores traducen entre:
+Adapters translate between:
 
-- modelos externos
-- modelos del dominio
+- external models
+- domain models
 
 ---
 
-#### Shared
+### Shared
 
-Utilidades técnicas reutilizables que no pertenecen al dominio.
+Reusable technical utilities that do not belong to the domain.
 
-Ejemplos:
+Examples:
 
-- parsing de fechas
-- operaciones monetarias
+- date parsing
+- monetary operations
 - hashing
-- limpieza de texto
+- text cleaning
 
-Debe mantenerse pequeño para evitar convertirse en un “cajón de sastre”.
+This module must remain small to avoid becoming a “miscellaneous utilities” dumping ground.
 
 ---
 
-### 4. Sistema de parsers extensible
+## 4. Extensible parser system
 
-El sistema debe soportar múltiples bancos y múltiples tipos de notificación.
+The system must support multiple banks and multiple notification types.
 
-La estrategia es:
+The strategy is:
 
 ```
 parser/
@@ -178,64 +180,66 @@ parser/
      └── transaction_notification.py
 ```
 
-Cada banco tiene su propio módulo.
+Each bank has its own module.
 
-Cada tipo de notificación tiene su propio parser.
+Each notification type has its own parser.
 
-Esto evita crear archivos monolíticos a medida que el sistema crece.
+This avoids monolithic files as the system grows.
 
 ---
 
-### 5. Fuente de datos: Gmail
+## 5. Data source: Gmail
 
-Los mensajes se obtienen desde **Gmail API**.
+Messages are retrieved through the **Gmail API**.
 
-Se procesan únicamente correos con la etiqueta:
+Only emails with the label:
 
 ```
 Transacciones
 ```
 
-El sistema actualiza etiquetas según el resultado:
+are processed.
 
-| Resultado | Acción                    |
-| --------- | ------------------------- |
-| éxito     | agregar etiqueta `parsed` |
-| error     | agregar etiqueta `error`  |
+The system updates labels according to the processing result:
 
-Los errores deben permanecer **no leídos** para facilitar su revisión manual.
+| Result  | Action             |
+| ------- | ------------------ |
+| success | add label `parsed` |
+| error   | add label `error`  |
+
+Messages that fail processing remain **unread** so they can be easily reviewed manually.
 
 ---
 
-### 6. Persistencia
+## 6. Persistence
 
-La persistencia inicial se realizará mediante:
+Initial persistence will be implemented using:
 
 **SQLite + SQLAlchemy**
 
-Motivación:
+Motivations:
 
-- simplicidad de despliegue
-- base local
-- suficiente para el volumen esperado
-- fácil backup
+- simple deployment
+- local database
+- sufficient for expected volume
+- easy backups
 
-Posteriormente podría migrarse a PostgreSQL sin modificar el dominio.
+The system could later migrate to PostgreSQL without modifying the domain.
 
 ---
 
-### 7. Almacenamiento local de artefactos (`data/`)
+## 7. Local artifact storage (`data/`)
 
-El sistema mantiene un directorio `data/` para almacenar artefactos de procesamiento.
+The system maintains a `data/` directory for processing artifacts.
 
-Esto cumple funciones de:
+This serves purposes such as:
 
-- depuración
-- auditoría
-- reproducibilidad
-- desarrollo de parsers
+- debugging
+- auditing
+- reproducibility
+- parser development
 
-Estructura:
+Structure:
 
 ```
 data/
@@ -246,47 +250,47 @@ data/
 └── errors
 ```
 
-#### raw_messages
+### raw_messages
 
-Correos originales descargados.
+Original downloaded emails.
 
-Permite reprocesar mensajes si cambian los parsers.
-
----
-
-#### rendered
-
-Representación intermedia del mensaje.
-
-Ejemplo:
-
-- texto limpio extraído del HTML
+Allows messages to be reprocessed if parsers change.
 
 ---
 
-#### parsed
+### rendered
 
-Resultado estructurado del parser.
+Intermediate representation of the message.
 
----
+Example:
 
-#### errors
-
-Artefactos asociados a fallos de parsing.
-
-Incluyen:
-
-- mensaje original
-- motivo del error
-- fragmentos relevantes
+- cleaned text extracted from HTML
 
 ---
 
-### 8. Política de almacenamiento configurable
+### parsed
 
-El almacenamiento de artefactos se controlará mediante **banderas de configuración**.
+Structured parser output.
 
-Ejemplos:
+---
+
+### errors
+
+Artifacts associated with parsing failures.
+
+They include:
+
+- the original message
+- the error reason
+- relevant message fragments
+
+---
+
+## 8. Configurable storage policy
+
+Artifact storage will be controlled through **configuration flags**.
+
+Examples:
 
 ```
 STORE_RAW_MESSAGES=true
@@ -295,93 +299,91 @@ STORE_PARSED_OUTPUT=true
 STORE_ERROR_ARTIFACTS=true
 ```
 
-Esto permite cambiar el comportamiento sin modificar código.
+This allows behavior changes without modifying code.
 
-La estrategia está inspirada en **feature toggles**.
+The strategy is inspired by **feature toggles**.
 
 ---
 
-### 9. Seguridad de credenciales
+## 9. Credential security
 
-El acceso a Gmail utiliza **OAuth2**.
+Access to Gmail uses **OAuth2**.
 
-El sistema nunca almacena contraseñas.
+The system never stores passwords.
 
-Se utilizan dos archivos:
+Two files are used:
 
 ```
 credentials.json
 token.json
 ```
 
-Ubicados fuera del repositorio.
+These files:
 
-Estos archivos:
-
-- no se versionan
-- tienen permisos restrictivos
-- pueden revocarse desde la cuenta Google
+- are not versioned
+- have restrictive permissions
+- can be revoked from the Google account
 
 ---
 
-### 10. Observabilidad
+## 10. Observability
 
-El sistema tendrá dos tipos de observabilidad.
+The system provides two forms of observability.
 
-#### Logs
+### Logs
 
-Directorio:
+Directory:
 
 ```
 logs/
 ```
 
-Contiene eventos de ejecución del sistema.
+Contains system execution events.
 
 ---
 
-#### Artefactos operativos
+### Operational artifacts
 
-Directorio:
+Directory:
 
 ```
 data/
 ```
 
-Contiene datos de procesamiento útiles para auditoría.
+Contains processing data useful for auditing.
 
 ---
 
-## Consecuencias
+## Consequences
 
-### Beneficios
+### Benefits
 
-- arquitectura escalable
-- independencia del dominio
-- facilidad para agregar nuevos bancos
-- facilidad para cambiar persistencia
-- facilidad para depurar parsers
-- trazabilidad del procesamiento
+- scalable architecture
+- domain independence
+- easy addition of new banks
+- easy persistence replacement
+- easier parser debugging
+- processing traceability
 
-Además, esta arquitectura permite practicar principios utilizados en sistemas empresariales reales.
-
----
-
-### Costos
-
-- mayor complejidad inicial
-- más archivos y capas
-- mayor disciplina requerida para mantener separaciones correctas
-
-Para un proyecto pequeño esto puede considerarse sobreingeniería, pero se acepta como decisión consciente con fines educativos y de calidad arquitectónica.
+Additionally, this architecture allows practicing principles used in real enterprise systems.
 
 ---
 
-## Alternativas consideradas
+### Costs
 
-### Arquitectura monolítica simple
+- higher initial complexity
+- more files and layers
+- stronger discipline required to maintain proper separation
 
-Una estructura más simple podría haber sido:
+For a small project this could be considered overengineering, but it is accepted as a deliberate decision for educational and architectural quality purposes.
+
+---
+
+## Alternatives considered
+
+### Simple monolithic architecture
+
+A simpler structure could have been:
 
 ```
 src/
@@ -391,19 +393,19 @@ src/
  main.py
 ```
 
-Esta opción fue descartada porque:
+This option was rejected because it:
 
-- mezcla lógica de dominio con infraestructura
-- dificulta escalar a múltiples bancos
-- complica testing
-- reduce valor educativo del proyecto
+- mixes domain logic with infrastructure
+- makes scaling to multiple banks harder
+- complicates testing
+- reduces the educational value of the project
 
 ---
 
-## Referencias
+## References
 
 Alistair Cockburn — _Hexagonal Architecture (Ports and Adapters)_
-<https://alistair.cockburn.us/hexagonal-architecture>
+[https://alistair.cockburn.us/hexagonal-architecture](https://alistair.cockburn.us/hexagonal-architecture)
 
 Eric Evans — _Domain-Driven Design_
 
@@ -412,12 +414,12 @@ Martin Fowler — _Patterns of Enterprise Application Architecture_
 Robert C. Martin — _Clean Architecture_
 
 Martin Fowler — _Feature Toggles_
-<https://martinfowler.com/articles/feature-toggles.html>
+[https://martinfowler.com/articles/feature-toggles.html](https://martinfowler.com/articles/feature-toggles.html)
 
 ---
 
-## Estado
+## Status
 
-Esta arquitectura se considera **aceptada** para la versión inicial del sistema.
+This architecture is considered **accepted** for the initial version of the system.
 
-Cambios futuros deberán registrarse mediante nuevos ADR.
+Future changes must be recorded through new ADRs.

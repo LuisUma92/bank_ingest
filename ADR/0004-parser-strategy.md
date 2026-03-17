@@ -1,50 +1,50 @@
-# ADR-0004: Estrategia de parsers para notificaciones bancarias
+# ADR-0004: Parser Strategy for Bank Notifications
 
-**Estado:** Aceptado
-**Fecha:** 2026-03-16
-**Autor:** Proyecto `bank_ingest`
-
----
-
-## Contexto
-
-El sistema `bank_ingest` debe procesar correos electrónicos enviados por múltiples bancos que contienen notificaciones de eventos financieros.
-
-Estas notificaciones presentan varias características que afectan el diseño del sistema:
-
-1. Cada banco utiliza **formatos de correo distintos**.
-2. Un mismo banco puede enviar **varios tipos de notificación**.
-3. Los formatos de los correos **pueden cambiar con el tiempo**.
-4. Los mensajes pueden contener tanto **HTML como texto plano**.
-5. La estructura semántica de los datos no es uniforme entre bancos.
-
-Ejemplos de tipos de notificación posibles:
-
-- uso de tarjeta de crédito
-- uso de tarjeta de débito
-- pago de tarjeta
-- transferencia recibida
-- transferencia enviada
-- débito automático
-- alerta de retiro
-
-El sistema debe extraer de estos correos un conjunto de **eventos financieros normalizados** que puedan almacenarse y analizarse posteriormente.
-
-En la versión inicial del sistema el alcance se limita a:
-
-- Banco: **BAC**
-- Tipo de notificación: **transacción con tarjeta**
-- Etiqueta Gmail: **Transacciones**
+**Status:** Accepted
+**Date:** 2026-03-16
+**Author:** `bank_ingest` Project
 
 ---
 
-## Decisión
+## Context
 
-El sistema utilizará una arquitectura de parsers **modular y extensible** organizada por banco y tipo de notificación.
+The `bank_ingest` system processes email notifications sent by multiple banks that describe financial events.
 
-La estructura general será:
+These notifications present several characteristics that influence system design:
 
-```
+1. Each bank uses **different email formats**.
+2. A single bank may send **multiple notification types**.
+3. Email formats **may change over time**.
+4. Messages may contain **both HTML and plain text**.
+5. The semantic structure of the data is **not standardized across banks**.
+
+Examples of possible notification types include:
+
+- credit card transaction
+- debit card transaction
+- credit card payment
+- incoming transfer
+- outgoing transfer
+- automatic debit
+- withdrawal alert
+
+The system must extract from these messages a set of **normalized financial events** that can be stored and analyzed.
+
+For the initial version of the system, the scope is limited to:
+
+- **Bank:** BAC Credomatic
+- **Notification type:** card transaction notification
+- **Gmail label:** `Transacciones`
+
+---
+
+## Decision
+
+The system will use a **modular and extensible parser architecture**, organized by **bank** and **notification type**.
+
+The general structure will be:
+
+```id="pij6q6"
 parser/
 ├── base.py
 └── bac/
@@ -53,50 +53,50 @@ parser/
     └── patterns.py
 ```
 
-Cada banco tendrá su propio módulo.
+Each bank will have its own module.
 
-Cada tipo de notificación tendrá su propio parser independiente.
+Each notification type will have its own independent parser.
 
 ---
 
-## Principios de diseño
+## Design Principles
 
-### 1. Separación entre clasificación y parsing
+### Separation between classification and parsing
 
-El sistema separa dos responsabilidades:
+The system separates two responsibilities:
 
-**Clasificación**
+**Classification**
 
-Determinar:
+Determining:
 
-- a qué banco pertenece el mensaje
-- qué tipo de notificación representa
+- which bank sent the message
+- which type of notification it represents
 
 **Parsing**
 
-Extraer los datos estructurados del mensaje.
+Extracting structured data from the message.
 
-Esta separación permite:
+This separation improves:
 
-- mejorar mantenibilidad
-- facilitar extensión del sistema
-- reducir complejidad en parsers individuales
+- maintainability
+- extensibility
+- clarity of individual parsers
 
 ---
 
-### 2. Parser base abstracto
+### Abstract base parser
 
-Todos los parsers deben implementar un contrato común definido en:
+All parsers must implement a common contract defined in:
 
-```
+```id="y5b1v0"
 parser/base.py
 ```
 
-Este contrato establece las operaciones mínimas que debe soportar un parser.
+This contract defines the minimum operations a parser must support.
 
-Ejemplo conceptual:
+Conceptual example:
 
-```
+```python id="suhb1e"
 class BaseParser(ABC):
 
     def can_parse(message: SourceMessage) -> bool:
@@ -106,122 +106,120 @@ class BaseParser(ABC):
         ...
 ```
 
-Responsabilidades:
+Responsibilities:
 
-- determinar si el parser puede procesar el mensaje
-- extraer los campos requeridos
-- producir un evento financiero normalizado
+- determine whether the parser can process the message
+- extract the required fields
+- produce a normalized financial event
 
 ---
 
-### 3. Clasificadores por banco
+### Bank-specific classifiers
 
-Cada banco tiene un **clasificador específico**.
+Each bank has a dedicated **classifier**.
 
-Ubicación:
+Location:
 
-```
+```id="1hlivn"
 parser/<bank>/classifier.py
 ```
 
-El clasificador analiza características del mensaje como:
+The classifier analyzes characteristics of the message such as:
 
-- dirección del remitente
-- dominio del remitente
-- asunto del correo
-- frases características
-- estructura del HTML
-- patrones de texto
+- sender address
+- sender domain
+- email subject
+- characteristic phrases
+- HTML structure
+- text patterns
 
-Ejemplo de decisión:
+Example classification logic:
 
-```
+```python id="o9yjz8"
 if sender_domain == "baccredomatic.com":
     bank = BAC
 ```
 
-El clasificador también determina el tipo de notificación.
+The classifier also determines the **notification type**.
 
 ---
 
-### 4. Parsers específicos por tipo de notificación
+### Notification-specific parsers
 
-Cada tipo de notificación se implementa como un parser independiente.
+Each notification type is implemented as a dedicated parser.
 
-Ejemplo:
+Example:
 
-```
+```id="v2m98a"
 transaction_notification.py
 ```
 
-Responsabilidad:
+The parser is responsible for extracting structured fields from the notification.
 
-extraer campos estructurados de la notificación.
+Fields defined for the initial version:
 
-Campos definidos para la versión inicial:
-
-| campo              | descripción            |
-| ------------------ | ---------------------- |
-| merchant           | comercio               |
-| transaction_date   | fecha                  |
-| card_brand         | marca de tarjeta       |
-| card_last4         | últimos 4 dígitos      |
-| authorization_code | código de autorización |
-| transaction_type   | tipo de transacción    |
-| amount             | monto                  |
-| currency           | moneda                 |
+| Field              | Description                  |
+| ------------------ | ---------------------------- |
+| merchant           | merchant name                |
+| transaction_date   | transaction date             |
+| card_brand         | card brand                   |
+| card_last4         | last four digits of the card |
+| authorization_code | authorization code           |
+| transaction_type   | transaction type             |
+| amount             | transaction amount           |
+| currency           | transaction currency         |
 
 ---
 
-### 5. Aislamiento de patrones
+### Pattern isolation
 
-Los patrones de parsing se ubican en:
+Parsing patterns are defined in:
 
-```
+```id="pbo4hs"
 patterns.py
 ```
 
-Esto incluye:
+This includes:
 
-- expresiones regulares
-- frases identificadoras
-- selectores HTML
-- fragmentos de texto relevantes
+- regular expressions
+- identifying phrases
+- HTML selectors
+- relevant text fragments
 
-Separar los patrones del parser permite:
+Separating patterns from parser logic allows:
 
-- modificar expresiones sin alterar lógica principal
-- facilitar mantenimiento
-- mejorar legibilidad
-
----
-
-## Flujo de parsing
-
-El proceso completo de parsing es el siguiente:
-
-1. obtener `SourceMessage`
-2. ejecutar clasificadores de banco
-3. identificar tipo de notificación
-4. seleccionar parser correspondiente
-5. ejecutar parser
-6. generar `FinancialEvent`
-
-Si el parser falla:
-
-- se registra un error
-- el mensaje se etiqueta como `error`
-- el mensaje permanece no leído
+- modifying expressions without changing the parser logic
+- easier maintenance
+- improved readability
 
 ---
 
-## Modelo de salida
+## Parsing Flow
 
-El parser produce un evento financiero normalizado.
+The complete parsing process follows these steps:
 
-Ejemplo conceptual:
+1. obtain a `SourceMessage`
+2. run bank classifiers
+3. determine the notification type
+4. select the appropriate parser
+5. execute the parser
+6. produce a `FinancialEvent`
 
-```json
+If parsing fails:
+
+- an error artifact is generated
+- the message is labeled as `error`
+- the message remains unread
+
+---
+
+## Output Model
+
+The parser produces a normalized financial event.
+
+Conceptual example:
+
+```json id="8kp9p5"
 {
   "bank": "BAC",
   "event_type": "card_transaction",
@@ -236,36 +234,36 @@ Ejemplo conceptual:
 }
 ```
 
-Este evento será persistido en la base de datos.
+This event is then persisted in the database.
 
 ---
 
-## Manejo de errores
+## Error Handling
 
-Errores posibles incluyen:
+Possible parsing errors include:
 
-- campo obligatorio no encontrado
-- formato inesperado
-- notificación desconocida
-- cambios en estructura del correo
+- required field not found
+- unexpected format
+- unsupported notification type
+- structural changes in email templates
 
-Cuando ocurre un error:
+When an error occurs:
 
-1. se genera un artefacto en `data/errors`
-2. el mensaje se etiqueta como `error`
-3. el mensaje permanece no leído
+1. an artifact is created in `data/errors`
+2. the message receives the label `error`
+3. the message remains unread
 
-Esto permite revisión manual.
+This enables manual review.
 
 ---
 
-## Escalabilidad
+## Scalability
 
-La estrategia permite agregar nuevos bancos fácilmente.
+The strategy allows new banks to be added easily.
 
-Ejemplo:
+Example:
 
-```
+```id="r3t5yn"
 parser/
 ├── bac/
 ├── bcr/
@@ -273,9 +271,9 @@ parser/
 └── scotia/
 ```
 
-Dentro de cada banco se pueden agregar múltiples parsers:
+Each bank can contain multiple parsers:
 
-```
+```id="2s5rmo"
 parser/bac/
 ├── classifier.py
 ├── transaction_notification.py
@@ -285,70 +283,70 @@ parser/bac/
 
 ---
 
-## Relación con arquitectura hexagonal
+## Relationship to the Hexagonal Architecture
 
-Los parsers se implementan como **adaptadores outbound**.
+Parsers are implemented as **outbound adapters**.
 
-Su función es traducir datos externos (correos) hacia modelos del dominio.
+Their responsibility is to translate external data (emails) into domain models.
 
-El dominio no debe depender de:
+The domain layer must not depend on:
 
-- expresiones regulares
-- estructuras HTML
-- formatos específicos de bancos
+- regular expressions
+- HTML structures
+- bank-specific formats
 
-Los parsers encapsulan estas dependencias.
-
----
-
-## Consecuencias
-
-### Beneficios
-
-- arquitectura extensible
-- parsers pequeños y especializados
-- separación clara de responsabilidades
-- mayor mantenibilidad
-- facilidad para agregar nuevos bancos
+Parsers encapsulate these external dependencies.
 
 ---
 
-### Costos
+## Consequences
 
-- mayor número de archivos
-- necesidad de mantener clasificadores
-- mayor disciplina de diseño
+### Benefits
 
-Estos costos se consideran aceptables debido a la naturaleza heterogénea de las notificaciones bancarias.
-
----
-
-## Alternativas consideradas
-
-### Parser único
-
-Una alternativa sería implementar un único parser que maneje todos los bancos y notificaciones.
-
-Esta opción fue descartada porque:
-
-- generaría archivos muy complejos
-- dificultaría mantenimiento
-- dificultaría agregar nuevos bancos
-- aumentaría riesgo de regresiones
+- extensible architecture
+- small and specialized parsers
+- clear separation of responsibilities
+- improved maintainability
+- easy addition of new banks
 
 ---
 
-## Referencias
+### Costs
 
-Eric Evans — Domain-Driven Design
+- increased number of files
+- need to maintain classifiers
+- greater design discipline required
 
-Martin Fowler — Patterns of Enterprise Application Architecture
-
-Alistair Cockburn — Hexagonal Architecture
-<https://alistair.cockburn.us/hexagonal-architecture>
+These costs are acceptable given the heterogeneous nature of bank notifications.
 
 ---
 
-## Estado
+## Alternatives Considered
 
-Esta estrategia queda **aceptada** para la versión inicial del sistema.
+### Single parser
+
+One alternative would be to implement a single parser handling all banks and notification types.
+
+This option was rejected because it would:
+
+- create overly complex files
+- complicate maintenance
+- make it harder to add new banks
+- increase the risk of regressions
+
+---
+
+## References
+
+Eric Evans — _Domain-Driven Design_
+
+Martin Fowler — _Patterns of Enterprise Application Architecture_
+
+Alistair Cockburn — _Hexagonal Architecture_
+[https://alistair.cockburn.us/hexagonal-architecture](https://alistair.cockburn.us/hexagonal-architecture)
+
+---
+
+## Status
+
+This parser strategy is **accepted** for the initial version of the system.

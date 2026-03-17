@@ -1,74 +1,70 @@
-# ADR-0006: Estrategia de selección de parsers
+# ADR-0006: Parser Selection Strategy
 
-**Estado:** Aceptado
-**Fecha:** 2026-03-16
-**Autor:** Proyecto `bank_ingest`
+**Status:** Accepted
+**Date:** 2026-03-16
+**Author:** `bank_ingest` Project
 
 ---
 
-## Contexto
+## Context
 
-El sistema `bank_ingest` procesa correos electrónicos de notificaciones bancarias con el objetivo de extraer eventos financieros estructurados.
+The `bank_ingest` system processes bank notification emails in order to extract structured financial events.
 
-El flujo general de procesamiento es:
+The overall processing pipeline is:
 
-1. Obtener mensaje desde la fuente (Gmail).
-2. Clasificar el mensaje.
-3. Seleccionar el parser adecuado.
-4. Parsear el contenido.
-5. Persistir el evento resultante.
-6. Actualizar el estado del mensaje.
+1. Retrieve the message from the source (Gmail)
+2. Classify the message
+3. Select the appropriate parser
+4. Parse the message content
+5. Persist the resulting event
+6. Update the processing state of the message
 
-La clasificación ocurre en dos dimensiones:
+Message classification occurs along two dimensions:
 
-- **Banco emisor** (`Bank`)
-- **Tipo de notificación** (`NotificationType`)
+- **Issuing bank** (`Bank`)
+- **Notification type** (`NotificationType`)
 
-Ejemplo:
+Example:
 
 ```
-
 Bank.BAC
 NotificationType.TRANSACTION_NOTIFICATION
-
 ```
 
-Una vez clasificado el mensaje, el sistema debe seleccionar automáticamente el parser correcto.
+Once the message has been classified, the system must automatically determine which parser should be used.
 
-Se espera que el sistema crezca aproximadamente a:
+The system is expected to grow to approximately:
 
-- ~5 bancos
-- ~3 tipos de notificación por banco
+- ~5 banks
+- ~3 notification types per bank
 
-Lo que implica alrededor de **15 combinaciones posibles de parsers**.
+This implies around **15 possible parser combinations**.
 
-Se evaluaron tres estrategias principales:
+Three main strategies were evaluated:
 
-1. **Registry explícito**
-2. **Auto-discovery de parsers**
+1. **Explicit parser registry**
+2. **Parser auto-discovery**
 3. **Chain of Responsibility**
 
 ---
 
-## Decisión
+## Decision
 
-El sistema utilizará un **registry explícito de parsers**, indexado por la combinación:
+The system will use an **explicit parser registry**, indexed by the pair:
 
 ```
-
 (Bank, NotificationType)
-
 ```
 
-El registry será responsable de resolver qué parser corresponde a una clasificación determinada.
+The registry will be responsible for resolving the correct parser for a given classification.
 
-Ejemplo conceptual:
+Conceptual representation:
 
 ```python
 registry: dict[tuple[Bank, NotificationType], BaseParser]
 ```
 
-La resolución seguirá el flujo:
+Parser selection follows this flow:
 
 ```
 Message
@@ -82,13 +78,41 @@ ParserRegistry.resolve(...)
 Parser
 ```
 
-Cada combinación `(Bank, NotificationType)` debe mapear a **exactamente un parser**.
+Each `(Bank, NotificationType)` combination must map to **exactly one parser**.
 
 ---
 
-## Registro asistido por metadata del parser
+## Rationale
 
-Para reducir duplicación, cada parser declarará su identidad mediante atributos de clase:
+### Deterministic parser resolution
+
+The registry guarantees deterministic behavior.
+
+Given a classification `(Bank, NotificationType)`, the system will always resolve the same parser.
+
+This avoids ambiguity or reliance on evaluation order.
+
+---
+
+### Separation between classification and parsing
+
+The system intentionally separates two responsibilities:
+
+**Classification**
+
+Determining which bank and notification type correspond to a message.
+
+**Parsing**
+
+Extracting structured information from the message.
+
+This separation keeps parsers focused on extraction logic and avoids duplicating classification logic inside parser implementations.
+
+---
+
+### Parser identity via metadata
+
+Each parser declares its identity using class attributes:
 
 ```python
 class BacTransactionNotificationParser(BaseParser):
@@ -97,51 +121,27 @@ class BacTransactionNotificationParser(BaseParser):
     notification_type = NotificationType.TRANSACTION_NOTIFICATION
 ```
 
-El registry permitirá registrar parsers mediante:
+The registry can register parsers using this metadata:
 
 ```python
 registry.register_parser(BacTransactionNotificationParser())
 ```
 
-Internamente, el registry construirá la clave:
+Internally, the registry builds the key:
 
 ```
 (parser.bank, parser.notification_type)
 ```
 
-Esto evita duplicar información entre el parser y el registry.
+This prevents duplication of configuration between the parser implementation and the registry.
 
 ---
 
-## Restricciones del registry
+### Explicit initialization of available parsers
 
-El registry debe garantizar las siguientes propiedades:
+Available parsers are declared explicitly in the composition root or in a dedicated registry module.
 
-### Unicidad
-
-No puede existir más de un parser para una misma combinación:
-
-```
-(Bank, NotificationType)
-```
-
-Si ocurre una colisión, el sistema debe fallar durante bootstrap.
-
----
-
-### Resolución determinista
-
-La selección del parser no debe depender de heurísticas ni del orden de evaluación.
-
-Dado un `(Bank, NotificationType)`, el resultado debe ser siempre el mismo parser.
-
----
-
-### Inicialización explícita
-
-El conjunto de parsers disponibles debe declararse explícitamente en el composition root o en un módulo de registro.
-
-Ejemplo:
+Example:
 
 ```python
 def build_parser_registry() -> ParserRegistry:
@@ -153,36 +153,59 @@ def build_parser_registry() -> ParserRegistry:
     return registry
 ```
 
-Esto mantiene la visibilidad de los componentes activos en el sistema.
+This ensures that all active parsers remain visible in system configuration.
 
 ---
 
-## `can_parse()` como verificación defensiva
+### Defensive validation through `can_parse()`
 
-El `BaseParser` puede exponer un método:
+The base parser may expose a method such as:
 
 ```python
 def can_parse(message: RawMessage) -> bool
 ```
 
-Este método **no se utilizará para seleccionar el parser**, sino como:
+This method **is not used for parser selection**.
 
-- verificación defensiva
-- validación interna del parser
-- herramienta útil en tests
-- protección ante errores de clasificación
+Instead, it serves as:
 
-La selección principal del parser seguirá siendo responsabilidad del `ParserRegistry`.
+- a defensive validation
+- an internal parser check
+- a useful testing tool
+- protection against classification errors
+
+Parser selection remains the responsibility of the `ParserRegistry`.
 
 ---
 
-## Alternativas consideradas
+## Consequences
 
-### 1. Auto-discovery de parsers
+### Benefits
 
-Se consideró implementar un mecanismo que escanee módulos de parsers y registre automáticamente las clases disponibles mediante decoradores, metaclasses o introspección de paquetes.
+- simple and deterministic parser selection
+- clear separation between classification and parsing
+- small and maintainable registry
+- explicit visibility of available parsers
+- predictable system behavior
 
-Ejemplo conceptual:
+---
+
+### Costs
+
+- the registry must be updated when adding new parsers
+- developers must maintain consistency between parsers and registry entries
+
+Given the expected system size (~15 parsers), these costs are considered minimal.
+
+---
+
+## Alternatives Considered
+
+### Parser auto-discovery
+
+An alternative would be scanning parser modules and automatically registering parser classes using decorators, metaclasses, or module introspection.
+
+Conceptual workflow:
 
 ```
 scan parsers/*
@@ -192,36 +215,36 @@ import modules
 auto-register parsers
 ```
 
-**Ventajas:**
+#### Advantages
 
-- menor trabajo manual al agregar nuevos parsers
-- extensibilidad automática
+- less manual work when adding new parsers
+- automatic extensibility
 
-**Desventajas:**
+#### Disadvantages
 
-- dependencia en side-effects de import
-- mayor dificultad de debugging
-- parsers activos pueden depender del orden de importación
-- reduce visibilidad del sistema
-- introduce "magia" innecesaria
+- dependence on import side effects
+- harder debugging
+- active parsers may depend on import order
+- reduced visibility of system components
+- unnecessary complexity
 
-Dado que el número esperado de parsers es relativamente pequeño (~15), el beneficio no justifica la complejidad adicional.
+Given the relatively small expected number of parsers (~15), the benefit does not justify the additional complexity.
 
-Por lo tanto, esta opción fue descartada.
+This option was rejected.
 
 ---
 
-### 2. Chain of Responsibility
+### Chain of Responsibility
 
-Otra opción considerada fue permitir que cada parser implementara:
+Another possibility would be allowing each parser to implement:
 
 ```python
 can_parse(message)
 ```
 
-y probar parsers secuencialmente hasta encontrar uno que acepte el mensaje.
+and sequentially evaluating parsers until one accepts the message.
 
-Ejemplo:
+Conceptual flow:
 
 ```
 for parser in parsers:
@@ -229,55 +252,36 @@ for parser in parsers:
         return parser
 ```
 
-**Ventajas:**
+#### Advantages
 
-- parsers encapsulan su propia lógica de reconocimiento
-- mayor flexibilidad en casos ambiguos
+- parsers encapsulate their own recognition logic
+- flexible in ambiguous cases
 
-**Desventajas:**
+#### Disadvantages
 
-- duplica lógica de clasificación dentro de parsers
-- puede volver el sistema menos predecible
-- el orden de evaluación se vuelve relevante
-- menor claridad arquitectónica
+- duplicates classification logic inside parsers
+- evaluation order becomes significant
+- system behavior becomes less predictable
+- weaker architectural separation
 
-Dado que el sistema ya posee una etapa explícita de **clasificación previa**, esta estrategia introduciría redundancia innecesaria.
+Because the system already includes an explicit **classification stage**, this approach would introduce unnecessary redundancy.
 
-Por lo tanto, fue descartada.
-
----
-
-## Consecuencias
-
-### Beneficios
-
-- selección de parser simple y determinista
-- separación clara entre **clasificación** y **parsing**
-- registry pequeño y fácil de mantener
-- visibilidad explícita de los parsers disponibles
-- comportamiento predecible
+This option was rejected.
 
 ---
 
-### Costos
+## References
 
-- el registry debe actualizarse al agregar nuevos parsers
-- se requiere disciplina para mantener el registro consistente
+Alistair Cockburn — _Hexagonal Architecture_
 
-Dado el tamaño esperado del sistema, estos costos se consideran mínimos.
+Martin Fowler — _Patterns of Enterprise Application Architecture_
 
----
-
-## Referencias
-
-- Alistair Cockburn — _Hexagonal Architecture_
-- Martin Fowler — _Patterns of Enterprise Application Architecture_
-- Eric Evans — _Domain-Driven Design_
+Eric Evans — _Domain-Driven Design_
 
 ---
 
-## Estado
+## Status
 
-Esta decisión queda **aceptada** para la versión actual del sistema.
+This decision is **accepted** for the current version of the system.
 
-Si en el futuro el número de parsers creciera significativamente o se introdujera un sistema de plugins externos, podría reconsiderarse una estrategia de descubrimiento automático mediante un nuevo ADR.
+If the number of parsers grows significantly in the future or if a plugin-based architecture becomes necessary, an automatic discovery mechanism may be reconsidered in a new ADR.

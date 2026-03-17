@@ -1,6 +1,8 @@
 # bank_ingest
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![Tests](https://github.com/LuisUma92/bank_ingest/actions/workflows/tests.yml/badge.svg)
+![Lint](https://github.com/LuisUma92/bank_ingest/actions/workflows/lint.yml/badge.svg)
 ![Architecture](https://img.shields.io/badge/architecture-hexagonal-black)
 ![DDD](https://img.shields.io/badge/design-DDD-6f42c1)
 ![Database](https://img.shields.io/badge/database-SQLite-003b57)
