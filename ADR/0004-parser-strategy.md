@@ -1,9 +1,19 @@
-# ADR-0004: Parser Strategy for Bank Notifications
-
-**Status:** Accepted
-**Date:** 2026-03-16
-**Author:** `bank_ingest` Project
-
+---
+adr: 0004
+title: Parser Strategy for Bank Notifications
+status: Accepted
+date: 2026-03-16
+author: "`bank_ingest` Project"
+reviewers: []
+tags:
+  - parsing
+  - domain-logic
+  - message-processing
+  - extensibility
+decision_scope: module
+supersedes: null
+superseded_by: null
+related_adrs: []
 ---
 
 ## Context

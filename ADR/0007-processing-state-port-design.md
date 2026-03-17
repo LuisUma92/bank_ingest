@@ -1,44 +1,57 @@
-# ADR-0007: Diseño del ProcessingStatePort
-
-**Estado:** Aceptado
-**Fecha:** 2026-03-16
-**Autor:** Proyecto `bank_ingest`
-
+---
+adr: 0007
+title: Design of the ProcessingStatePort
+status: Accepted
+date: 2026-03-16
+author:
+  - "`bank_ingest` Project"
+reviewers: []
+tags:
+  - outbound-port
+  - message-processing
+  - state-management
+  - infrastructure-abstraction
+decision_scope: component
+supersedes: null
+superseded_by: null
+related_adrs: []
 ---
 
-## Contexto
+## Context
 
-El sistema `bank_ingest` procesa correos electrónicos de notificaciones bancarias obtenidos desde Gmail.  
-Una vez procesado un mensaje, el sistema debe actualizar su **estado de procesamiento** para evitar reprocesamientos y permitir observabilidad del pipeline.
+The `bank_ingest` system processes bank notification emails retrieved from Gmail.
 
-En Gmail, este estado se representa mediante **labels** aplicados al mensaje, por ejemplo:
+Once a message has been processed, the system must update its **processing state** in order to:
+
+- prevent duplicate processing
+- provide observability of the processing pipeline
+
+In Gmail, this state is represented through **labels** applied to the message, for example:
 
 - `parsed`
 - `error`
 
-Estas etiquetas permiten distinguir mensajes que ya fueron procesados de aquellos que aún deben procesarse o que fallaron.
+These labels allow the system to distinguish between messages that have already been processed and those that are still pending or that failed during processing.
 
-Sin embargo, en una arquitectura hexagonal, el dominio y la capa application no deben depender directamente de conceptos específicos de la infraestructura (como labels de Gmail).
+However, within a **hexagonal architecture**, the domain and application layers must not depend on infrastructure-specific concepts such as Gmail labels.
 
-Por lo tanto, es necesario definir un **port de salida** que permita expresar el estado del procesamiento sin acoplar el sistema a la semántica específica de Gmail.
+Therefore, the system requires an **outbound port** that allows expressing the processing state without coupling the system to Gmail’s labeling semantics.
 
-Este port se denomina:
+This port is called:
 
-```
-
+```id="p0lmb7"
 ProcessingStatePort
-
 ```
 
 ---
 
-## Decisión
+## Decision
 
-El `ProcessingStatePort` expondrá **operaciones orientadas al resultado del procesamiento**, no operaciones de manipulación directa de labels.
+The `ProcessingStatePort` will expose **operations oriented around processing outcomes**, rather than generic label manipulation operations.
 
-El contrato mínimo del port será:
+The minimal contract of the port will be:
 
-```python
+```python id="nfdh1u"
 class ProcessingStatePort(Protocol):
 
     def mark_processed(self, message_id: MessageId) -> None:
@@ -51,106 +64,85 @@ class ProcessingStatePort(Protocol):
         ...
 ```
 
-Este port describe **transiciones del pipeline de procesamiento**, no operaciones genéricas de etiquetado.
+This interface expresses **state transitions in the processing pipeline**, rather than low-level label operations.
 
-La implementación concreta en el adaptador de Gmail será responsable de traducir estas operaciones a modificaciones de labels en Gmail.
-
----
-
-## Traducción en el adaptador Gmail
-
-El adaptador `GmailProcessingStateAdapter` implementará el port y mapeará cada operación a la manipulación de labels.
-
-Ejemplo conceptual:
-
-| Operación del port | Acción en Gmail                       |
-| ------------------ | ------------------------------------- |
-| `mark_processed`   | agregar label `parsed`                |
-| `mark_failed`      | agregar label `error`                 |
-| `mark_skipped`     | agregar label `skipped` o equivalente |
-
-Los detalles exactos de labels permanecen encapsulados dentro del adaptador.
-
-De esta manera:
-
-- el dominio no depende de Gmail
-- el comportamiento externo sigue siendo observable mediante labels
+The Gmail adapter will translate these operations into label updates in Gmail.
 
 ---
 
-## Razonamiento arquitectónico
+## Rationale
 
-### Separación de dominio e infraestructura
+### Separation between domain logic and infrastructure
 
-El dominio y la capa application deben expresar **intenciones de negocio**, no detalles técnicos de una API externa.
+The domain and application layers should express **business intent**, not the mechanics of an external API.
 
-Exponer operaciones como:
+Exposing operations such as:
 
-```
+```id="odv1jq"
 add_label
 remove_label
 set_labels
 ```
 
-introduciría semántica específica de Gmail en la interfaz del port.
+would introduce Gmail-specific semantics into the port interface.
 
-Esto violaría la separación deseada entre application e infraestructura.
+This would violate the architectural boundary between application and infrastructure.
 
-El uso de operaciones como:
+Instead, operations such as:
 
-```
+```id="y2j7pl"
 mark_processed
 mark_failed
 ```
 
-expresa el lenguaje natural del pipeline.
+express the natural language of the processing pipeline.
 
 ---
 
-### Claridad semántica del pipeline
+### Clear semantic representation of pipeline states
 
-El sistema posee tres resultados principales para un mensaje:
+The system recognizes three primary outcomes for a message:
 
 1. **Processed**
-   El mensaje fue parseado correctamente y se generó un evento válido.
+   The message was successfully parsed and produced a valid financial event.
 
 2. **Failed**
-   Ocurrió un error durante parsing o procesamiento.
+   An error occurred during parsing or processing.
 
 3. **Skipped**
-   El mensaje no corresponde a un tipo soportado o no debe procesarse.
+   The message does not correspond to a supported notification type or should not be processed.
 
-Estas categorías permiten distinguir claramente los estados del pipeline.
+These categories clearly represent the logical states of the pipeline.
 
 ---
 
-## Manejo de fallos parciales
+### Handling partial failures
 
-Puede ocurrir el siguiente escenario:
+A possible scenario is:
 
-```
-mensaje parseado correctamente
+```id="i8igw3"
+message parsed successfully
 ↓
-evento persistido
+event persisted
 ↓
-fallo al actualizar labels en Gmail
+failure while updating Gmail labels
 ```
 
-Este caso se considera un **fallo de sincronización externa**, no un fallo del procesamiento de negocio.
+This situation represents an **external synchronization failure**, not a failure of the business process.
 
-Por lo tanto:
+Therefore:
 
-- el evento persistido **no debe revertirse**
-- el sistema debe registrar el incidente
-- el error debe ser observable en logs o artefactos de error
+- the persisted event **must not be rolled back**
+- the incident should be logged
+- the error should be observable through logs or diagnostic artifacts
 
-Esto evita acoplar la consistencia del sistema interno a la disponibilidad de Gmail.
+This prevents the system’s internal consistency from depending on the availability of Gmail.
 
-El sistema debe tratar la actualización de estado como **operación posterior al procesamiento principal**.
+Updating the processing state should therefore be treated as a **post-processing operation**.
 
-Ejemplo conceptual:
+Conceptual example:
 
-```python
+```python id="j6g5dz"
 event_repository.save(event)
 
 try:
@@ -159,92 +151,92 @@ except Exception:
     logger.error("Failed to update processing state")
 ```
 
-Esto permite que el sistema interno permanezca consistente incluso si Gmail falla temporalmente.
+This approach ensures the system remains internally consistent even if Gmail temporarily fails.
 
 ---
 
-## Alternativas consideradas
+## Consequences
 
-### 1. Port basado en labels
+### Benefits
 
-Exponer operaciones genéricas como:
+- strong decoupling between the domain and Gmail
+- a port interface aligned with the language of the processing pipeline
+- improved semantic clarity in the application layer
+- easier testing through fake adapters
+- full encapsulation of infrastructure details
 
-```
+---
+
+### Costs
+
+- reduced flexibility if more complex label operations are required
+- potential need to extend the port if new processing states appear in the future
+
+These costs are considered acceptable for the current version of the system.
+
+---
+
+## Alternatives Considered
+
+### Label-based port
+
+One alternative would expose generic operations such as:
+
+```id="3f3rmt"
 add_label(label)
 remove_label(label)
 ```
 
-**Ventajas**
+#### Advantages
 
-- máxima flexibilidad
-- alineación directa con Gmail
+- maximum flexibility
+- direct alignment with Gmail functionality
 
-**Desventajas**
+#### Disadvantages
 
-- introduce semántica específica de Gmail
-- acopla la capa application a la infraestructura
-- reduce claridad del lenguaje del dominio
+- introduces Gmail-specific semantics into the port interface
+- couples the application layer to infrastructure
+- weakens the domain language
 
-Esta opción fue descartada.
+This option was rejected.
 
 ---
 
-### 2. Abstracción genérica de "tags"
+### Generic tag abstraction
 
-Otra alternativa era exponer un sistema de "tags" abstractos.
+Another alternative was exposing a generic tag interface:
 
-Ejemplo:
-
-```
+```id="g5sikc"
 add_tag("processed")
 add_tag("error")
 ```
 
-**Ventajas**
+#### Advantages
 
-- desacopla de Gmail
+- decouples from Gmail-specific terminology
 
-**Desventajas**
+#### Disadvantages
 
-- introduce una abstracción innecesariamente genérica
-- no refleja claramente el estado del pipeline
-- complica el modelo conceptual sin beneficio real
+- introduces an unnecessarily generic abstraction
+- does not clearly express the pipeline states
+- complicates the conceptual model without meaningful benefit
 
-Esta opción fue descartada.
-
----
-
-## Consecuencias
-
-### Beneficios
-
-- desacoplamiento entre dominio y Gmail
-- interfaz del port alineada con el lenguaje del pipeline
-- claridad semántica en application
-- facilidad de testing mediante adaptadores fake
-- encapsulación completa de detalles de infraestructura
+This option was rejected.
 
 ---
 
-### Costos
+## References
 
-- menor flexibilidad si se necesitaran operaciones más complejas sobre labels
-- posible necesidad de extender el port en el futuro si aparecen nuevos estados
+Alistair Cockburn — _Hexagonal Architecture (Ports and Adapters)_
 
-Estos costos se consideran aceptables para la versión actual del sistema.
+Eric Evans — _Domain-Driven Design_
 
----
-
-## Referencias
-
-- Alistair Cockburn — _Hexagonal Architecture (Ports and Adapters)_
-- Eric Evans — _Domain-Driven Design_
-- Robert C. Martin — _Clean Architecture_
+Robert C. Martin — _Clean Architecture_
 
 ---
 
-## Estado
+## Status
 
-Esta decisión queda **aceptada** para la versión actual del sistema.
+This decision is **accepted** for the current version of the system.
 
-Si en el futuro el sistema necesitara manejar estados adicionales o sincronización más compleja con proveedores externos, la interfaz del port podrá extenderse mediante un nuevo ADR.
+If the system later requires more complex synchronization with external providers or additional processing states, the port interface may be extended through a new ADR.

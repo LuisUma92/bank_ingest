@@ -1,9 +1,19 @@
-# ADR-0005: Bootstrap and Dependency Injection Strategy
-
-**Status:** Accepted
-**Date:** 2026-03-16
-**Author:** `bank_ingest` Project
-
+---
+adr: 0005
+title: Bootstrap and Dependency Injection Strategy
+status: Accepted
+date: 2026-03-16
+author: "`bank_ingest` Project"
+reviewers: []
+tags:
+  - dependency-injection
+  - composition-root
+  - application-bootstrap
+  - wiring
+decision_scope: system
+supersedes: null
+superseded_by: null
+related_adrs: []
 ---
 
 ## Context

@@ -1,9 +1,20 @@
-# ADR-0006: Parser Selection Strategy
-
-**Status:** Accepted
-**Date:** 2026-03-16
-**Author:** `bank_ingest` Project
-
+---
+adr: 0006
+title: Parser Selection Strategy
+status: Accepted
+date: 2026-03-16
+author:
+  - "`bank_ingest` Project"
+reviewers: []
+tags:
+  - parser-registry
+  - parser-selection
+  - message-classification
+  - domain-pattern
+decision_scope: module
+supersedes: null
+superseded_by: null
+related_adrs: []
 ---
 
 ## Context

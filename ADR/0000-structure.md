@@ -1,4 +1,21 @@
-# ADR-0000 Structure of the project
+---
+adr: 0000
+title: "Project structure"
+status: Accepted
+date: 2026-03-16
+authors:
+  - "Luis Fernando Umaña Castro"
+reviewers: []
+tags:
+  - project-structure
+  - repository-design
+  - architecture
+  - conventions
+decision_scope: system
+supersedes: null
+superseded_by: null
+related_adrs: []
+---
 
 ## Project structure
 

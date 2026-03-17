@@ -1,6 +1,39 @@
-<svg width="1200" height="700" viewBox="0 0 1200 700" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1200"
+   height="700"
+   viewBox="0 0 1200 700"
+   fill="none"
+   version="1.1"
+   id="svg35"
+   sodipodi:docname="architecture.svg"
+   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview35"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.6817248"
+     inkscape:cx="519.27112"
+     inkscape:cy="239.83285"
+     inkscape:window-width="1896"
+     inkscape:window-height="1150"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg35" />
+  <defs
+     id="defs1">
+    <style
+       id="style1">
       .title { font: 700 28px sans-serif; fill: #111827; }
       .subtitle { font: 500 16px sans-serif; fill: #4B5563; }
       .label { font: 700 18px sans-serif; fill: #111827; }
@@ -14,80 +47,301 @@
       .arrow { stroke: #6B7280; stroke-width: 3; fill: none; marker-end: url(#arrowhead); }
       .dashed { stroke-dasharray: 8 8; }
     </style>
-    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#6B7280"/>
+    <marker
+       id="arrowhead"
+       markerWidth="10"
+       markerHeight="10"
+       refX="8"
+       refY="5"
+       orient="auto">
+      <path
+         d="M0,0 L10,5 L0,10 Z"
+         fill="#6B7280"
+         id="path1" />
     </marker>
   </defs>
-
-  <rect width="1200" height="700" fill="#FFFFFF"/>
-
-  <text x="60" y="55" class="title">bank_ingest Architecture</text>
-  <text x="60" y="85" class="subtitle">Hexagonal Architecture (Ports and Adapters) + DDD</text>
-
+  <rect
+     width="1200"
+     height="700"
+     fill="#FFFFFF"
+     id="rect1" />
+  <text
+     x="432.02734"
+     y="55"
+     class="title"
+     id="text1"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:28px;line-height:normal;font-family:sans-serif">bank_ingest Architecture</text>
+  <text
+     x="414.96875"
+     y="85"
+     class="subtitle"
+     id="text2"
+     style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;line-height:normal;font-family:sans-serif">Hexagonal Architecture (Ports and Adapters) + DDD</text>
   <!-- Domain -->
-  <rect x="430" y="180" width="340" height="220" class="domain"/>
-  <text x="570" y="215" text-anchor="middle" class="label">Domain</text>
-  <text x="460" y="255" class="text">• Entities</text>
-  <text x="460" y="285" class="text">• Value Objects</text>
-  <text x="460" y="315" class="text">• Enums</text>
-  <text x="460" y="345" class="text">• Domain Services</text>
-  <text x="460" y="375" class="text">• Ports (interfaces)</text>
-
+  <rect
+     x="430"
+     y="180"
+     width="340"
+     height="220"
+     class="domain"
+     id="rect2" />
+  <text
+     x="570"
+     y="215"
+     text-anchor="middle"
+     class="label"
+     id="text3">Domain</text>
+  <text
+     x="460"
+     y="255"
+     class="text"
+     id="text4">• Entities</text>
+  <text
+     x="460"
+     y="285"
+     class="text"
+     id="text5">• Value Objects</text>
+  <text
+     x="460"
+     y="315"
+     class="text"
+     id="text6">• Enums</text>
+  <text
+     x="460"
+     y="345"
+     class="text"
+     id="text7">• Domain Services</text>
+  <text
+     x="460"
+     y="375"
+     class="text"
+     id="text8">• Ports (interfaces)</text>
   <!-- Application -->
-  <rect x="390" y="440" width="420" height="150" class="app"/>
-  <text x="600" y="475" text-anchor="middle" class="label">Application</text>
-  <text x="425" y="515" class="text">• Fetch labeled messages</text>
-  <text x="425" y="545" class="text">• Classify bank + notification type</text>
-  <text x="425" y="575" class="text">• Parse, persist, and update processing state</text>
-
+  <rect
+     x="390"
+     y="440"
+     width="420"
+     height="150"
+     class="app"
+     id="rect8" />
+  <text
+     x="600"
+     y="475"
+     text-anchor="middle"
+     class="label"
+     id="text9">Application</text>
+  <text
+     x="425"
+     y="515"
+     class="text"
+     id="text10">• Fetch labeled messages</text>
+  <text
+     x="425"
+     y="545"
+     class="text"
+     id="text11">• Classify bank + notification type</text>
+  <text
+     x="425"
+     y="575"
+     class="text"
+     id="text12">• Parse, persist, and update processing state</text>
   <!-- Inbound -->
-  <rect x="70" y="465" width="220" height="95" class="adapter"/>
-  <text x="180" y="500" text-anchor="middle" class="label">Inbound Adapters</text>
-  <text x="100" y="535" class="text">• CLI</text>
-
+  <rect
+     x="70"
+     y="465"
+     width="220"
+     height="95"
+     class="adapter"
+     id="rect12" />
+  <text
+     x="180"
+     y="500"
+     text-anchor="middle"
+     class="label"
+     id="text13">Inbound Adapters</text>
+  <text
+     x="100"
+     y="535"
+     class="text"
+     id="text14">• CLI</text>
   <!-- Outbound left -->
-  <rect x="60" y="145" width="250" height="250" class="adapter"/>
-  <text x="185" y="180" text-anchor="middle" class="label">Outbound Adapters</text>
-  <text x="90" y="220" class="text">• Gmail source adapter</text>
-  <text x="90" y="250" class="text">• Gmail processing state adapter</text>
-  <text x="90" y="280" class="text">• Parser registry</text>
-  <text x="90" y="310" class="text">• BAC parser module</text>
-  <text x="90" y="340" class="text">• Storage adapters</text>
-  <text x="90" y="370" class="text">• Export adapters</text>
-
+  <rect
+     x="60"
+     y="145"
+     width="250"
+     height="250"
+     class="adapter"
+     id="rect14" />
+  <text
+     x="185"
+     y="180"
+     text-anchor="middle"
+     class="label"
+     id="text15">Outbound Adapters</text>
+  <text
+     x="90"
+     y="220"
+     class="text"
+     id="text16">• Gmail source adapter</text>
+  <text
+     x="90"
+     y="250"
+     class="text"
+     id="text17">• Gmail processing state adapter</text>
+  <text
+     x="90"
+     y="280"
+     class="text"
+     id="text18">• Parser registry</text>
+  <text
+     x="90"
+     y="310"
+     class="text"
+     id="text19">• BAC parser module</text>
+  <text
+     x="90"
+     y="340"
+     class="text"
+     id="text20">• Storage adapters</text>
+  <text
+     x="90"
+     y="370"
+     class="text"
+     id="text21">• Export adapters</text>
   <!-- Outbound right persistence -->
-  <rect x="890" y="145" width="250" height="170" class="adapter"/>
-  <text x="1015" y="180" text-anchor="middle" class="label">Persistence Adapters</text>
-  <text x="920" y="220" class="text">• SQLAlchemy repository</text>
-  <text x="920" y="250" class="text">• SQLite engine</text>
-  <text x="920" y="280" class="text">• Unit of Work</text>
-
+  <rect
+     x="890"
+     y="145"
+     width="250"
+     height="170"
+     class="adapter"
+     id="rect21" />
+  <text
+     x="1015"
+     y="180"
+     text-anchor="middle"
+     class="label"
+     id="text22">Persistence Adapters</text>
+  <text
+     x="920"
+     y="220"
+     class="text"
+     id="text23">• SQLAlchemy repository</text>
+  <text
+     x="920"
+     y="250"
+     class="text"
+     id="text24">• SQLite engine</text>
+  <text
+     x="920"
+     y="280"
+     class="text"
+     id="text25">• Unit of Work</text>
   <!-- External systems -->
-  <rect x="50" y="40" width="180" height="70" class="infra"/>
-  <text x="140" y="82" text-anchor="middle" class="label">Gmail API</text>
-
-  <rect x="945" y="40" width="140" height="70" class="infra"/>
-  <text x="1015" y="82" text-anchor="middle" class="label">SQLite</text>
-
-  <rect x="930" y="360" width="170" height="70" class="infra"/>
-  <text x="1015" y="402" text-anchor="middle" class="label">Filesystem</text>
-
-  <rect x="70" y="610" width="220" height="55" class="infra"/>
-  <text x="180" y="643" text-anchor="middle" class="small">Entry point: bank-ingest command</text>
-
+  <rect
+     x="50"
+     y="40"
+     width="180"
+     height="70"
+     class="infra"
+     id="rect25" />
+  <text
+     x="140"
+     y="82"
+     text-anchor="middle"
+     class="label"
+     id="text26">Gmail API</text>
+  <rect
+     x="945"
+     y="40"
+     width="140"
+     height="70"
+     class="infra"
+     id="rect26" />
+  <text
+     x="1015"
+     y="82"
+     text-anchor="middle"
+     class="label"
+     id="text27">SQLite</text>
+  <rect
+     x="930"
+     y="360"
+     width="170"
+     height="70"
+     class="infra"
+     id="rect27" />
+  <text
+     x="1015"
+     y="402"
+     text-anchor="middle"
+     class="label"
+     id="text28">Filesystem</text>
+  <rect
+     x="70"
+     y="610"
+     width="220"
+     height="55"
+     class="infra"
+     id="rect28" />
+  <text
+     x="180"
+     y="643"
+     text-anchor="middle"
+     class="small"
+     id="text29">Entry point: bank-ingest command</text>
   <!-- Arrows -->
-  <path d="M290 512 C330 512, 345 512, 390 512" class="arrow"/>
-  <path d="M600 440 C600 420, 600 415, 600 400" class="arrow"/>
-  <path d="M430 290 C390 290, 360 290, 310 290" class="arrow"/>
-  <path d="M770 290 C820 290, 845 245, 890 245" class="arrow"/>
-
-  <path d="M140 110 C140 125, 160 130, 170 145" class="arrow dashed"/>
-  <path d="M1015 110 C1015 125, 1015 130, 1015 145" class="arrow dashed"/>
-  <path d="M1015 315 C1015 335, 1015 340, 1015 360" class="arrow dashed"/>
-
+  <path
+     d="M290 512 C330 512, 345 512, 390 512"
+     class="arrow"
+     id="path29" />
+  <path
+     d="M600 440 C600 420, 600 415, 600 400"
+     class="arrow"
+     id="path30" />
+  <path
+     d="M430 290 C390 290, 360 290, 310 290"
+     class="arrow"
+     id="path31" />
+  <path
+     d="M770 290 C820 290, 845 245, 890 245"
+     class="arrow"
+     id="path32" />
+  <path
+     d="M140 110 C140 125, 160 130, 170 145"
+     class="arrow dashed"
+     id="path33" />
+  <path
+     d="M1015 110 C1015 125, 1015 130, 1015 145"
+     class="arrow dashed"
+     id="path34" />
+  <path
+     d="M1015 315 C1015 335, 1015 340, 1015 360"
+     class="arrow dashed"
+     id="path35" />
   <!-- Dependency rule -->
-  <rect x="420" y="110" width="360" height="45" rx="12" fill="#111827"/>
-  <text x="600" y="138" text-anchor="middle" style="font:700 15px sans-serif; fill:#FFFFFF;">
-    Dependency rule: infrastructure depends inward, never the reverse
-  </text>
+  <rect
+     x="420"
+     y="110"
+     width="360"
+     height="45"
+     rx="12"
+     fill="#111827"
+     id="rect35" />
+  <text
+     x="600"
+     y="138"
+     text-anchor="middle"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:15px;line-height:normal;font-family:sans-serif;white-space:pre;inline-size:295.084;fill:#ffffff"
+     id="text35"
+     transform="translate(-0.50170898,-10.601316)"
+     xml:space="preserve"><tspan
+       x="600"
+       y="138"
+       id="tspan1">Dependency rule: infrastructure depends<tspan
+   y="138"
+   id="tspan2"> </tspan></tspan><tspan
+       x="600"
+       y="156.74999"
+       id="tspan3">inward, never the reverse</tspan></text>
 </svg>

@@ -1,9 +1,19 @@
-# ADR-0003: Local Storage Policy (`data/`)
-
-**Status:** Accepted
-**Date:** 2026-03-16
-**Author:** `bank_ingest` Project
-
+---
+adr: 0003
+title: "Local Storage Policy (`data/`)"
+status: Accepted
+date: 2026-03-16
+author: "`bank_ingest` Project"
+reviewers: []
+tags:
+  - storage
+  - observability
+  - data-retention
+  - debugging
+decision_scope: system
+supersedes: null
+superseded_by: null
+related_adrs: []
 ---
 
 ## Context

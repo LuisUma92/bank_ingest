@@ -1,9 +1,20 @@
-# ADR-0001: System Architecture for `bank_ingest`
-
-**Status:** Accepted
-**Date:** 2026-03-16
-**Author:** `bank_ingest` Project
-
+---
+adr: 0001
+title: "System Architecture for `bank_ingest`"
+status: Accepted
+date: 2026-03-16
+author:
+  - "`bank_ingest` Project"
+reviewers: []
+tags:
+  - hexagonal-architecture
+  - system-architecture
+  - ports-and-adapters
+  - domain-boundaries
+decision_scope: system
+supersedes: null
+superseded_by: null
+related_adrs: []
 ---
 
 ## Context

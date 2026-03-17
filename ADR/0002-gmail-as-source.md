@@ -1,9 +1,19 @@
-# ADR-0002: Gmail as the Message Ingestion Source
-
-**Status:** Accepted
-**Date:** 2026-03-16
-**Author:** `bank_ingest` Project
-
+---
+adr: 0002
+title: Gmail as the Message Ingestion Source
+status: Accepted
+date: 2026-03-16
+author: "`bank_ingest` Project"
+reviewers: []
+tags:
+  - external-integration
+  - gmail-api
+  - message-ingestion
+  - infrastructure-adapter
+decision_scope: component
+supersedes: null
+superseded_by: null
+related_adrs: []
 ---
 
 ## Context
