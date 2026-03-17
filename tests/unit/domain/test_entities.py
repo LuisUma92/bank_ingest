@@ -13,7 +13,6 @@ from bank_ingest.domain.entities import (
 from bank_ingest.domain.enums import Bank, Currency, NotificationType, TransactionType
 from bank_ingest.domain.value_objects import CardInfo, EventId, MessageId, Money
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------

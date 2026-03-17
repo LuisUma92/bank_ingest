@@ -25,7 +25,7 @@ class TestBankIngestError:
             raise BankIngestError("test")
 
     def test_caught_as_exception(self):
-        with pytest.raises(Exception):
+        with pytest.raises(BankIngestError):
             raise BankIngestError("test")
 
 
@@ -116,7 +116,7 @@ class TestStorageError:
             raise StorageError("write failed")
 
     def test_can_be_caught_as_exception(self):
-        with pytest.raises(Exception):
+        with pytest.raises(StorageError):
             raise StorageError("write failed")
 
 
@@ -138,7 +138,7 @@ class TestMessageSourceError:
             raise MessageSourceError("fetch failed")
 
     def test_can_be_caught_as_exception(self):
-        with pytest.raises(Exception):
+        with pytest.raises(MessageSourceError):
             raise MessageSourceError("fetch failed")
 
 

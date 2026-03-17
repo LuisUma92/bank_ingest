@@ -19,7 +19,6 @@ from bank_ingest.domain.ports.message_store import MessageStorePort
 from bank_ingest.domain.ports.processing_state import ProcessingStatePort
 from bank_ingest.domain.value_objects import CardInfo, EventId, MessageId, Money
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

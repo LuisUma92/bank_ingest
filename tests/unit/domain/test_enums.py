@@ -37,7 +37,8 @@ class TestNotificationType:
         assert isinstance(NotificationType.TRANSACTION_NOTIFICATION.value, str)
 
     def test_from_value(self):
-        assert NotificationType("TRANSACTION_NOTIFICATION") == NotificationType.TRANSACTION_NOTIFICATION
+        expected = NotificationType.TRANSACTION_NOTIFICATION
+        assert NotificationType("TRANSACTION_NOTIFICATION") == expected
 
     def test_invalid_type_raises(self):
         with pytest.raises(ValueError):
