@@ -1,0 +1,93 @@
+<svg width="1200" height="700" viewBox="0 0 1200 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font: 700 28px sans-serif; fill: #111827; }
+      .subtitle { font: 500 16px sans-serif; fill: #4B5563; }
+      .label { font: 700 18px sans-serif; fill: #111827; }
+      .text { font: 500 14px sans-serif; fill: #374151; }
+      .small { font: 500 13px sans-serif; fill: #4B5563; }
+      .box { fill: #FFFFFF; stroke: #D1D5DB; stroke-width: 2; rx: 16; }
+      .domain { fill: #EEF2FF; stroke: #6366F1; stroke-width: 2; rx: 18; }
+      .app { fill: #ECFDF5; stroke: #10B981; stroke-width: 2; rx: 18; }
+      .adapter { fill: #FFF7ED; stroke: #F97316; stroke-width: 2; rx: 18; }
+      .infra { fill: #F9FAFB; stroke: #9CA3AF; stroke-width: 2; rx: 16; }
+      .arrow { stroke: #6B7280; stroke-width: 3; fill: none; marker-end: url(#arrowhead); }
+      .dashed { stroke-dasharray: 8 8; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#6B7280"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="700" fill="#FFFFFF"/>
+
+  <text x="60" y="55" class="title">bank_ingest Architecture</text>
+  <text x="60" y="85" class="subtitle">Hexagonal Architecture (Ports and Adapters) + DDD</text>
+
+  <!-- Domain -->
+  <rect x="430" y="180" width="340" height="220" class="domain"/>
+  <text x="570" y="215" text-anchor="middle" class="label">Domain</text>
+  <text x="460" y="255" class="text">• Entities</text>
+  <text x="460" y="285" class="text">• Value Objects</text>
+  <text x="460" y="315" class="text">• Enums</text>
+  <text x="460" y="345" class="text">• Domain Services</text>
+  <text x="460" y="375" class="text">• Ports (interfaces)</text>
+
+  <!-- Application -->
+  <rect x="390" y="440" width="420" height="150" class="app"/>
+  <text x="600" y="475" text-anchor="middle" class="label">Application</text>
+  <text x="425" y="515" class="text">• Fetch labeled messages</text>
+  <text x="425" y="545" class="text">• Classify bank + notification type</text>
+  <text x="425" y="575" class="text">• Parse, persist, and update processing state</text>
+
+  <!-- Inbound -->
+  <rect x="70" y="465" width="220" height="95" class="adapter"/>
+  <text x="180" y="500" text-anchor="middle" class="label">Inbound Adapters</text>
+  <text x="100" y="535" class="text">• CLI</text>
+
+  <!-- Outbound left -->
+  <rect x="60" y="145" width="250" height="250" class="adapter"/>
+  <text x="185" y="180" text-anchor="middle" class="label">Outbound Adapters</text>
+  <text x="90" y="220" class="text">• Gmail source adapter</text>
+  <text x="90" y="250" class="text">• Gmail processing state adapter</text>
+  <text x="90" y="280" class="text">• Parser registry</text>
+  <text x="90" y="310" class="text">• BAC parser module</text>
+  <text x="90" y="340" class="text">• Storage adapters</text>
+  <text x="90" y="370" class="text">• Export adapters</text>
+
+  <!-- Outbound right persistence -->
+  <rect x="890" y="145" width="250" height="170" class="adapter"/>
+  <text x="1015" y="180" text-anchor="middle" class="label">Persistence Adapters</text>
+  <text x="920" y="220" class="text">• SQLAlchemy repository</text>
+  <text x="920" y="250" class="text">• SQLite engine</text>
+  <text x="920" y="280" class="text">• Unit of Work</text>
+
+  <!-- External systems -->
+  <rect x="50" y="40" width="180" height="70" class="infra"/>
+  <text x="140" y="82" text-anchor="middle" class="label">Gmail API</text>
+
+  <rect x="945" y="40" width="140" height="70" class="infra"/>
+  <text x="1015" y="82" text-anchor="middle" class="label">SQLite</text>
+
+  <rect x="930" y="360" width="170" height="70" class="infra"/>
+  <text x="1015" y="402" text-anchor="middle" class="label">Filesystem</text>
+
+  <rect x="70" y="610" width="220" height="55" class="infra"/>
+  <text x="180" y="643" text-anchor="middle" class="small">Entry point: bank-ingest command</text>
+
+  <!-- Arrows -->
+  <path d="M290 512 C330 512, 345 512, 390 512" class="arrow"/>
+  <path d="M600 440 C600 420, 600 415, 600 400" class="arrow"/>
+  <path d="M430 290 C390 290, 360 290, 310 290" class="arrow"/>
+  <path d="M770 290 C820 290, 845 245, 890 245" class="arrow"/>
+
+  <path d="M140 110 C140 125, 160 130, 170 145" class="arrow dashed"/>
+  <path d="M1015 110 C1015 125, 1015 130, 1015 145" class="arrow dashed"/>
+  <path d="M1015 315 C1015 335, 1015 340, 1015 360" class="arrow dashed"/>
+
+  <!-- Dependency rule -->
+  <rect x="420" y="110" width="360" height="45" rx="12" fill="#111827"/>
+  <text x="600" y="138" text-anchor="middle" style="font:700 15px sans-serif; fill:#FFFFFF;">
+    Dependency rule: infrastructure depends inward, never the reverse
+  </text>
+</svg>
