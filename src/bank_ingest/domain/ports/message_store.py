@@ -32,7 +32,7 @@ class MessageStorePort(ABC):
         """
 
     @abstractmethod
-    def store_parsed(self, message_id: MessageId, data: dict) -> None:
+    def store_parsed(self, message_id: MessageId, data: dict[str, object]) -> None:
         """Persist the structured data extracted from a message.
 
         Args:

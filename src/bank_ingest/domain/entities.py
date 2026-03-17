@@ -76,7 +76,7 @@ class FinancialEvent(BaseModel):
     authorization_code: str
     transaction_type: Annotated[TransactionType, Field(strict=True)]
     amount: Money
-    raw_data: dict
+    raw_data: dict[str, object]
     created_at: datetime
 
     @field_validator("card", mode="before")
